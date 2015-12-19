@@ -70,17 +70,19 @@ func (connection *DBConnection) RollbackTransaction() error {
 	return err
 }
 
-func (connection *DBConnection) query(sql string) (*sql.Rows, error) {
+func (connection *DBConnection) query(
+	query string, args ...interface{}) (*sql.Rows, error) {
 	if connection.tx != nil {
-		return connection.tx.Query(sql)
+		return connection.tx.Query(query, args...)
 	} else {
-		return connection.db.Query(sql)
+		return connection.db.Query(query, args...)
 	}
 }
 
 const (
 	DBInteger = iota
 	DBString  = iota
+	DBTime    = iota
 )
 
 const (
@@ -96,8 +98,16 @@ type DBColumn struct {
 	ForeignKey   string
 }
 
+func encodeValue(value string) string {
+	return "'" + strings.Replace(value, "'", "''", -1) + "'"
+}
+
+func encodeName(name string) string {
+	return "\"" + strings.Replace(name, "\"", "\"\"", -1) + "\""
+}
+
 func (column *DBColumn) sql() string {
-	var sql = "\"" + column.Name + "\""
+	var sql = encodeName(column.Name)
 
 	switch column.Type {
 	case DBInteger:
@@ -108,6 +118,8 @@ func (column *DBColumn) sql() string {
 		}
 	case DBString:
 		sql += " varchar"
+	case DBTime:
+		sql += " timestamp with time zone"
 	default:
 		sql += " ?"
 	}
@@ -121,8 +133,8 @@ func (column *DBColumn) sql() string {
 	}
 
 	if len(column.ForeignKey) != 0 {
-		sql += fmt.Sprintf(" REFERENCES \"%s\"(\"%s\")",
-			column.ForeignTable, column.ForeignKey)
+		sql += fmt.Sprintf(" REFERENCES %s(%s)",
+			encodeName(column.ForeignTable), encodeName(column.ForeignKey))
 	}
 
 	return sql
@@ -148,8 +160,8 @@ func (connection *DBConnection) CreateTable(
 		names = append(names, columns[i].sql())
 	}
 
-	sql := fmt.Sprintf("CREATE TABLE \"%s\"(%s)",
-		name, strings.Join(names, ", "))
+	sql := fmt.Sprintf("CREATE TABLE %s(%s)",
+		encodeName(name), strings.Join(names, ", "))
 	if _, err := connection.query(sql); err != nil {
 		return err
 	}
@@ -165,7 +177,7 @@ func (connection *DBConnection) CreateTable(
 }
 
 func (connection *DBConnection) DropTable(name string) error {
-	_, err := connection.query(fmt.Sprintf("DROP TABLE \"%s\"", name))
+	_, err := connection.query(fmt.Sprintf("DROP TABLE %s", encodeName(name)))
 	return err
 }
 
@@ -173,17 +185,17 @@ func (connection *DBConnection) InsertRow(table string,
 	columns map[string]string, id_column string) (int, error) {
 	var keys, values []string
 	for k, v := range columns {
-		keys = append(keys, "\""+k+"\"")
-		values = append(values, "'"+v+"'")
+		keys = append(keys, encodeName(k))
+		values = append(values, encodeValue(v))
 	}
 
 	ret := ""
 	if len(id_column) != 0 {
-		ret = " RETURNING \"" + id_column + "\""
+		ret = " RETURNING  " + encodeName(id_column)
 	}
 
-	sql := fmt.Sprintf("INSERT INTO \"%s\"(%s) VALUES(%s)%s",
-		table, strings.Join(keys, ", "), strings.Join(values, ", "), ret)
+	sql := fmt.Sprintf("INSERT INTO %s(%s) VALUES(%s)%s", encodeName(table),
+		strings.Join(keys, ", "), strings.Join(values, ", "), ret)
 	rows, err := connection.query(sql)
 	if err != nil {
 		return 0, err

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 )
 
@@ -42,7 +43,7 @@ func InstallDatamon(connection *DBConnection) error {
 		{"id", DBInteger, DBPrimaryKey, "", ""},
 		{"schema", DBInteger, DBNotNull, "dm_schema", "id"},
 		{"path", DBString, DBNotNull, "", ""},
-		{"id_column", DBString, 0, "", ""},
+		{"id_attribute", DBString, 0, "", ""},
 	}
 	indexes = []DBIndex{
 		{[]string{"schema", "path"}},
@@ -87,12 +88,47 @@ func InstallSchema(connection *DBConnection,
 		"description": description,
 		"xsd":         buf.String(),
 	}
-	_, err := connection.InsertRow("dm_schema", columns, "id")
+	id, err := connection.InsertRow("dm_schema", columns, "id")
 	if err != nil {
 		return err
 	}
 
-	_, err = NewXSDSchema(buf)
+	var schema *XSDSchema
+	schema, err = NewXSDSchema(buf)
+	if err != nil {
+		return err
+	}
+
+	err = schema.IterateElements(func(path string, element *XSDElement) error {
+		columns := map[string]string{
+			"schema":       fmt.Sprint(id),
+			"path":         path,
+			"id_attribute": element.IdAttribute,
+		}
+		id, err := connection.InsertRow("dm_path", columns, "id")
+		if err != nil {
+			return err
+		}
+
+		columns2 := []DBColumn{
+			{"document", DBInteger, DBNotNull, "dm_document", "id"},
+			{"time", DBTime, DBNotNull, "", ""},
+			{"event", DBInteger, DBNotNull, "", ""},
+			{"text", DBString, 0, "", ""},
+		}
+		for _, a := range element.Attributes() {
+			columns2 = append(columns2, DBColumn{a.Name, DBString, 0, "", ""})
+		}
+		indexes := []DBIndex{
+			{[]string{"document", "time"}},
+		}
+		if err := connection.CreateTable(
+			"dm_path_"+fmt.Sprint(id), columns2, indexes); err != nil {
+			return err
+		}
+
+		return nil
+	})
 	if err != nil {
 		return err
 	}

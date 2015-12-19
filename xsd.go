@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/xml"
+	"fmt"
 	"io"
 	"os"
 )
@@ -34,11 +35,24 @@ func (schema *XSDSchema) setupTypes() {
 	}
 }
 
+type NextXSDElementFunc func(path string, element *XSDElement) error
+
+func (schema *XSDSchema) IterateElements(nextFunc NextXSDElementFunc) error {
+	for i := range schema.Elements {
+		err := schema.Elements[i].iterateElements("", nextFunc)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type XSDElement struct {
 	Name        string          `xml:"name,attr"`
 	Type        string          `xml:"type,attr"`
 	MaxOccurs   string          `xml:"maxOccurs,attr"`
 	MinOccurs   string          `xml:"minOccurs,attr"`
+	IdAttribute string          `xml:"idAttribute,attr"` // extension
 	SimpleType  *XSDSimpleType  `xml:"simpleType"`
 	ComplexType *XSDComplexType `xml:"complexType"`
 }
@@ -61,6 +75,38 @@ func (element *XSDElement) setupTypes(
 	}
 }
 
+func (element *XSDElement) iterateElements(
+	path string, nextFunc NextXSDElementFunc) error {
+	path += "/" + element.Name
+	if err := nextFunc(path, element); err != nil {
+		return err
+	}
+
+	if element.ComplexType != nil {
+		return element.ComplexType.iterateElements(path, nextFunc)
+	} else if element.SimpleType != nil {
+	} else {
+		return fmt.Errorf("type of `element` (%s) neither corresponds "+
+			"to `simpleType` nor to `complexType` (not supported)",
+			element.Name)
+	}
+
+	return nil
+}
+
+func (element *XSDElement) Attributes() []XSDAttribute {
+	if element.ComplexType == nil {
+		return nil
+	}
+	if element.ComplexType.Attributes != nil {
+		return element.ComplexType.Attributes
+	}
+	if element.ComplexType.SimpleContent != nil {
+		return element.ComplexType.SimpleContent.attributes()
+	}
+	return nil
+}
+
 type XSDSimpleType struct {
 	Name string `xml:"name,attr"`
 }
@@ -80,6 +126,16 @@ func (complexType *XSDComplexType) setupTypes(
 	}
 }
 
+func (complexType *XSDComplexType) iterateElements(
+	path string, nextFunc NextXSDElementFunc) error {
+	if complexType.Sequence != nil {
+		return complexType.Sequence.iterateElements(path, nextFunc)
+	} else {
+		return fmt.Errorf("`complexType` (%s) doesn't "+
+			"contain `sequence` (not supported)", complexType.Name)
+	}
+}
+
 type XSDSequence struct {
 	Elements []XSDElement `xml:"element"`
 }
@@ -92,8 +148,23 @@ func (sequence *XSDSequence) setupTypes(
 	}
 }
 
+func (sequence *XSDSequence) iterateElements(
+	path string, nextFunc NextXSDElementFunc) error {
+	for i := range sequence.Elements {
+		sequence.Elements[i].iterateElements(path, nextFunc)
+	}
+	return nil
+}
+
 type XSDSimpleContent struct {
 	Extension *XSDExtension `xml:"extension"`
+}
+
+func (simpleContent *XSDSimpleContent) attributes() []XSDAttribute {
+	if simpleContent.Extension != nil {
+		return simpleContent.Extension.Attributes
+	}
+	return nil
 }
 
 type XSDExtension struct {

@@ -14,10 +14,10 @@ func main() {
 	}
 	defer conn.Close()
 
-	if err = UninstallDatamon(conn); err != nil {
-		fmt.Printf("failure: %s\n", err)
-		return
-	}
+	// if err = UninstallDatamon(conn); err != nil {
+	// 	fmt.Printf("failure: %s\n", err)
+	// 	return
+	// }
 
 	if err = InstallDatamon(conn); err != nil {
 		fmt.Printf("failure: %s\n", err)
