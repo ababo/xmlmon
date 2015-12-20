@@ -52,7 +52,8 @@ func (column *Column) sqlDesc() string {
 
 	if len(column.ForeignTable) != 0 {
 		desc += fmt.Sprintf(" REFERENCES %s(%s)",
-			encodeName(column.ForeignTable), encodeName(column.ForeignKey))
+			encodeName(column.ForeignTable),
+			encodeName(column.ForeignKey))
 	}
 
 	return desc
