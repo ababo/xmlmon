@@ -71,8 +71,9 @@ func sqlJoins(joins []Join) string {
 		} else {
 			p := joins[i-1]
 			jt := encodeName(j.Table)
-			sql += fmt.Sprintf(" JOIN %s ON %s.%s = %s.%s", jt,
-				encodeName(p.Table), encodeName(p.RightColumn),
+			sql += fmt.Sprintf(" JOIN %s ON %s.%s = %s.%s",
+				jt, encodeName(p.Table),
+				encodeName(p.RightColumn),
 				jt, encodeName(j.LeftColumn))
 		}
 	}
@@ -101,8 +102,8 @@ func sqlWhere(where interface{}) (string, error) {
 		}
 		return fmt.Sprintf("%s = %s", left, right), nil
 	default:
-		return "", fmt.Errorf(
-			"select unknown type in `where` of select: %T", where)
+		return "", fmt.Errorf("unknown type (%T) in "+
+			"`where` clause of SelectRows", where)
 	}
 }
 

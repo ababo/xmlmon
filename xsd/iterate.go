@@ -27,9 +27,9 @@ func (element *Element) iterate(
 		return element.ComplexType.iterate(path, iterateFunc)
 	} else if element.SimpleType != nil {
 	} else {
-		return fmt.Errorf("type of `element` (%s) neither corresponds "+
-			"to `simpleType` nor to `complexType` (not supported)",
-			element.Name)
+		return fmt.Errorf("type of `element` (%s) neither "+
+			"corresponds to `simpleType` nor to `complexType` "+
+			"(not supported)", element.Name)
 	}
 
 	return nil
@@ -41,7 +41,8 @@ func (complexType *ComplexType) iterate(
 		return complexType.Sequence.iterate(path, iterateFunc)
 	} else {
 		return fmt.Errorf("`complexType` (%s) doesn't "+
-			"contain `sequence` (not supported)", complexType.Name)
+			"contain `sequence` (not supported)",
+			complexType.Name)
 	}
 }
 

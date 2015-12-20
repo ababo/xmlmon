@@ -25,6 +25,10 @@ type Column struct {
 	ForeignKey   string
 }
 
+type Index struct {
+	Columns []string
+}
+
 func (column *Column) sqlDesc() string {
 	var desc = encodeName(column.Name)
 
@@ -64,10 +68,6 @@ func (column *Column) sqlDesc() string {
 	return desc
 }
 
-type Index struct {
-	Columns []string
-}
-
 func (index *Index) sqlDesc(table string) string {
 	var cols []string
 	for i := range index.Columns {
@@ -101,6 +101,7 @@ func CreateTable(handle Handle, name string,
 }
 
 func DropTable(handle Handle, name string) error {
-	_, err := handle.Query(fmt.Sprintf("DROP TABLE %s", encodeName(name)))
+	sql := fmt.Sprintf("DROP TABLE %s", encodeName(name))
+	_, err := handle.Query(sql)
 	return err
 }

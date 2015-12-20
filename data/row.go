@@ -18,8 +18,9 @@ func InsertRow(handle Handle, table string,
 		ret = " RETURNING  " + encodeName(id_column)
 	}
 
-	sql := fmt.Sprintf("INSERT INTO %s(%s) VALUES(%s)%s", encodeName(table),
-		strings.Join(keys, ", "), strings.Join(values, ", "), ret)
+	sql := fmt.Sprintf("INSERT INTO %s(%s) VALUES(%s)%s",
+		encodeName(table), strings.Join(keys, ", "),
+		strings.Join(values, ", "), ret)
 	rows, err := handle.Query(sql)
 	if err != nil {
 		return 0, err

@@ -81,7 +81,7 @@ func FindSchema(handle data.Handle, name string) (*Schema, error) {
 	defer rows.Close()
 
 	if !rows.Next() {
-		return nil, fmt.Errorf("schema `%s` is not found", name)
+		return nil, fmt.Errorf("schema (%s) is not found", name)
 	}
 
 	var schema Schema
