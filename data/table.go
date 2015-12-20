@@ -14,6 +14,7 @@ const ( // column types
 const ( // column flags
 	PrimaryKey = 1 << iota
 	NotNull    = 1 << iota
+	Unique     = 1 << iota
 )
 
 type Column struct {
@@ -48,6 +49,10 @@ func (column *Column) sqlDesc() string {
 
 	if column.Flags&NotNull != 0 {
 		desc += " NOT NULL"
+	}
+
+	if column.Flags&Unique != 0 {
+		desc += " UNIQUE"
 	}
 
 	if len(column.ForeignTable) != 0 {

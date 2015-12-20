@@ -4,42 +4,35 @@ import (
 	"btc/data"
 	"btc/xsd"
 	"bytes"
-	"database/sql"
 	"fmt"
 	"io"
 )
 
-func Install(db *sql.DB) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func Install(handle data.Handle) error {
 	columns := []data.Column{
 		{"id", data.Int, data.PrimaryKey, "", ""},
-		{"name", data.Str, data.NotNull, "", ""},
+		{"name", data.Str, data.NotNull | data.Unique, "", ""},
 		{"description", data.Str, 0, "", ""},
 		{"xsd", data.Str, data.NotNull, "", ""},
 	}
 	indexes := []data.Index{
 		{[]string{"name"}},
 	}
-	if err = data.CreateTable(tx,
+	if err := data.CreateTable(handle,
 		"mon_schema", columns, indexes); err != nil {
 		return err
 	}
 
 	columns = []data.Column{
 		{"id", data.Int, data.PrimaryKey, "", ""},
-		{"name", data.Str, data.NotNull, "", ""},
+		{"name", data.Str, data.NotNull | data.Unique, "", ""},
 		{"schema", data.Int, data.NotNull, "mon_schema", "id"},
 		{"url", data.Str, data.NotNull, "", ""},
 		{"update_period", data.Int, data.NotNull, "", ""},
 		{"snapshot_period", data.Int, data.NotNull, "", ""},
 	}
 	if err := data.CreateTable(
-		tx, "mon_document", columns, indexes); err != nil {
+		handle, "mon_document", columns, indexes); err != nil {
 		return err
 	}
 
@@ -52,22 +45,16 @@ func Install(db *sql.DB) error {
 	indexes = []data.Index{
 		{[]string{"schema", "path"}},
 	}
-	if err := data.CreateTable(tx,
+	if err := data.CreateTable(handle,
 		"mon_path", columns, indexes); err != nil {
 		return err
 	}
 
-	return tx.Commit()
+	return nil
 }
 
-func InstallSchema(db *sql.DB,
+func InstallSchema(handle data.Handle,
 	name string, desc string, xsdText io.Reader) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	buf := bytes.NewBuffer(nil)
 	if _, err := buf.ReadFrom(xsdText); err != nil {
 		return err
@@ -78,7 +65,7 @@ func InstallSchema(db *sql.DB,
 		"description": desc,
 		"xsd":         buf.String(),
 	}
-	id, err := data.InsertRow(tx, "mon_schema", columns, "id")
+	id, err := data.InsertRow(handle, "mon_schema", columns, "id")
 	if err != nil {
 		return err
 	}
@@ -95,7 +82,7 @@ func InstallSchema(db *sql.DB,
 			"path":         path,
 			"id_attribute": element.IdAttribute,
 		}
-		id, err := data.InsertRow(tx, "mon_path", columns, "id")
+		id, err := data.InsertRow(handle, "mon_path", columns, "id")
 		if err != nil {
 			return err
 		}
@@ -114,7 +101,7 @@ func InstallSchema(db *sql.DB,
 		indexes := []data.Index{
 			{[]string{"document", "time"}},
 		}
-		if err := data.CreateTable(tx, "mon_path_"+fmt.Sprint(id),
+		if err := data.CreateTable(handle, "mon_path_"+fmt.Sprint(id),
 			columns2, indexes); err != nil {
 			return err
 		}
@@ -125,5 +112,5 @@ func InstallSchema(db *sql.DB,
 		return err
 	}
 
-	return tx.Commit()
+	return nil
 }

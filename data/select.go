@@ -27,7 +27,7 @@ type Order struct {
 	Descending bool
 }
 
-func Select(handle Handle, columns []ColName, joins []Join,
+func SelectRows(handle Handle, columns []ColName, joins []Join,
 	where interface{}, orders []Order, limit int) (*sql.Rows, error) {
 	var cols []string
 	for _, c := range columns {
@@ -53,7 +53,6 @@ func Select(handle Handle, columns []ColName, joins []Join,
 		sql += fmt.Sprintf(" LIMIT %d", limit)
 	}
 
-	fmt.Printf("sql: %s\n", sql)
 	return handle.Query(sql)
 }
 
