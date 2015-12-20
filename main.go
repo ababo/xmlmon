@@ -1,40 +1,41 @@
 package main
 
 import (
-	"fmt"
+	"btc/data"
+	"btc/mon"
+	"database/sql"
+	"log"
 	"os"
 )
 
 func main() {
-	conn, err := NewDBConnection(
-		"user=datamon password=datamon dbname=datamon sslmode=disable")
+	config, err := NewConfig("config.json")
 	if err != nil {
-		fmt.Printf("failure: %s\n", err)
-		return
-	}
-	defer conn.Close()
-
-	// if err = UninstallDatamon(conn); err != nil {
-	// 	fmt.Printf("failure: %s\n", err)
-	// 	return
-	// }
-
-	if err = InstallDatamon(conn); err != nil {
-		fmt.Printf("failure: %s\n", err)
-		return
+		log.Fatalf("failed to load config: %s\n", err)
 	}
 
-	file, err := os.Open("test.xsd")
+	var db *sql.DB
+	db, err = data.Open(config.DbConnStr)
 	if err != nil {
-		fmt.Printf("failure: %s\n", err)
+		log.Fatalf("failed to establish db connection: %s\n", err)
+	}
+	defer db.Close()
+
+	if err = mon.Install(db); err != nil {
+		log.Fatalf("failed to install data monitor: %s\n", err)
 		return
 	}
-	defer file.Close()
 
-	if err = InstallSchema(conn, "test", "blabla", file); err != nil {
-		fmt.Printf("failure: %s\n", err)
+	xsd, err := os.Open("tmp/tmp.xsd")
+	if err != nil {
+		log.Fatalf("failed to read xsd file: %s\n", err)
+		return
+	}
+	defer xsd.Close()
+
+	if err = mon.InstallSchema(db, "test", "blabla", xsd); err != nil {
+		log.Fatalf("failed to install schema: %s\n", err)
 		return
 	}
 
-	fmt.Printf("ok\n")
 }

@@ -1,0 +1,3 @@
+{
+	"dbConnStr": "user=btc password=btc dbname=btc sslmode=disable"
+}
