@@ -52,7 +52,7 @@ func FindDoc(handle data.Handle, name string) (*Doc, error) {
 	defer rows.Close()
 
 	if !rows.Next() {
-		return nil, fmt.Errorf("document (%s) is not found", name)
+		return nil, fmt.Errorf("mon: document (%s) not found", name)
 	}
 
 	var doc Doc

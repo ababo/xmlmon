@@ -19,12 +19,11 @@ func (schema *Schema) Iterate(iterateFunc IterateFunc) error {
 func (element *Element) iterate(
 	path string, iterateFunc IterateFunc) error {
 	if len(element.Ref) != 0 {
-		if element.reference == nil {
-			return fmt.Errorf(
-				"unresolved reference (%s) in `element` (%s)",
-				element.Ref, element.Name)
+		if element.RefElement == nil {
+			return fmt.Errorf("xsd: unresolved reference (%s) "+
+				"in `element` (%s)", element.Ref, element.Name)
 		}
-		return element.reference.iterate(path, iterateFunc)
+		return element.RefElement.iterate(path, iterateFunc)
 	}
 
 	path += "/" + element.Name
@@ -37,9 +36,8 @@ func (element *Element) iterate(
 	} else if element.SimpleType != nil {
 	} else if _, err := xsdToValueType(element.Type); err == nil {
 	} else {
-		return fmt.Errorf("type of `element` (%s) neither "+
-			"corresponds to `simpleType` nor to `complexType` "+
-			"(not supported)", element.Name)
+		return fmt.Errorf("xsd: no `simpleType` or `complexType` "+
+			"found for `element` (%s)", element.Name)
 	}
 
 	return nil
@@ -51,9 +49,8 @@ func (complexType *ComplexType) iterate(
 		return complexType.Sequence.iterate(path, iterateFunc)
 	} else if complexType.SimpleContent != nil {
 	} else {
-		return fmt.Errorf("`complexType` (%s) neither contains "+
-			"`sequence` nor `simpleContent` (not supported)",
-			complexType.Name)
+		return fmt.Errorf("xsd: no `sequence` or `simpleContent` "+
+			"found for `complexType` (%s)", complexType.Name)
 	}
 	return nil
 }

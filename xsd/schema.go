@@ -15,7 +15,7 @@ type Element struct {
 	IdAttribute string       `xml:"idAttribute,attr"` // extension
 	SimpleType  *SimpleType  `xml:"simpleType"`
 	ComplexType *ComplexType `xml:"complexType"`
-	reference   *Element
+	RefElement  *Element
 }
 
 type SimpleType struct {

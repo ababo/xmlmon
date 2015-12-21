@@ -42,7 +42,7 @@ func (element *Element) setup(
 	elements map[string]*Element) {
 
 	if len(element.Ref) != 0 {
-		element.reference = elements[element.Ref]
+		element.RefElement = elements[element.Ref]
 	}
 
 	if element.SimpleType != nil {

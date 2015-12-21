@@ -31,12 +31,15 @@ func main() {
 	}
 	defer xsd.Close()
 
-	schema := mon.NewSchema("test", "blabla")
+	schema := mon.NewSchema("etr", "probe ETR-290 checks")
 	if err = mon.AddSchema(db, schema, xsd); err != nil {
 		log.Fatalf("failed to install schema: %s", err)
 	}
 
-	doc := mon.NewDoc("test", "test", "http://google.com", 1, 2)
+	doc := mon.NewDoc("hw4_172_etr", "etr",
+		"http://10.0.30.172/probe/data/AnaEtrDetails?inputId=0&"+
+			"etrEngineNo=0&detailsId=-1&showDisabledChecks=true",
+		60, 86400)
 	if err = mon.AddDoc(db, doc); err != nil {
 		log.Fatalf("failed to add document: %s", err)
 	}

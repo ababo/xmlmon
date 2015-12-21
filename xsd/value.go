@@ -29,8 +29,8 @@ func (attribute *Attribute) ValueType() (int, error) {
 
 func (simpleType *SimpleType) valueType() (int, error) {
 	if simpleType.Restriction == nil {
-		return 0, fmt.Errorf("`simpleType` (%s) has "+
-			"no `restriction` (not supported)", simpleType.Name)
+		return 0, fmt.Errorf("xsd: no `restriction` found "+
+			"for `simpleType` (%s)", simpleType.Name)
 	}
 	return simpleType.Restriction.valueType()
 }
@@ -64,7 +64,6 @@ func xsdToValueType(xsdType string) (int, error) {
 	case "xs:time":
 		return Time, nil
 	default:
-		return 0, fmt.Errorf(
-			"Unknown value type (%s) (not supported)", xsdType)
+		return 0, fmt.Errorf("xsd: unknown value type (%s)", xsdType)
 	}
 }
