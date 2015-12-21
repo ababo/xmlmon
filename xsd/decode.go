@@ -19,23 +19,37 @@ func (schema *Schema) setupTypes() {
 		complexTypes[t.Name] = t
 	}
 
+	elements := map[string]*Element{}
 	for i := range schema.Elements {
-		schema.Elements[i].setupTypes(simpleTypes, complexTypes)
+		e := &schema.Elements[i]
+		elements[e.Name] = e
+	}
+
+	for i := range schema.Elements {
+		schema.Elements[i].setup(
+			simpleTypes, complexTypes, elements)
 	}
 
 	for i := range schema.ComplexTypes {
-		schema.ComplexTypes[i].setupTypes(simpleTypes, complexTypes)
+		schema.ComplexTypes[i].setup(
+			simpleTypes, complexTypes, elements)
 	}
 }
 
-func (element *Element) setupTypes(
+func (element *Element) setup(
 	simpleTypes map[string]*SimpleType,
-	complexTypes map[string]*ComplexType) {
+	complexTypes map[string]*ComplexType,
+	elements map[string]*Element) {
+
+	if len(element.Ref) != 0 {
+		element.reference = elements[element.Ref]
+	}
 
 	if element.SimpleType != nil {
 		return
 	} else if element.ComplexType != nil {
-		element.ComplexType.setupTypes(simpleTypes, complexTypes)
+		element.ComplexType.setup(
+			simpleTypes, complexTypes, elements)
 		return
 	}
 
@@ -46,19 +60,50 @@ func (element *Element) setupTypes(
 	}
 }
 
-func (complexType *ComplexType) setupTypes(
+func (complexType *ComplexType) setup(
 	simpleTypes map[string]*SimpleType,
-	complexTypes map[string]*ComplexType) {
+	complexTypes map[string]*ComplexType,
+	elements map[string]*Element) {
 	if complexType.Sequence != nil {
-		complexType.Sequence.setupTypes(simpleTypes, complexTypes)
+		complexType.Sequence.setup(
+			simpleTypes, complexTypes, elements)
+	}
+
+	if complexType.SimpleContent != nil {
+		complexType.SimpleContent.setup(simpleTypes)
+	}
+
+	for i := range complexType.Attributes {
+		complexType.Attributes[i].setup(simpleTypes)
 	}
 }
 
-func (sequence *Sequence) setupTypes(
+func (sequence *Sequence) setup(
 	simpleTypes map[string]*SimpleType,
-	complexTypes map[string]*ComplexType) {
+	complexTypes map[string]*ComplexType,
+	elements map[string]*Element) {
 	for i := range sequence.Elements {
-		sequence.Elements[i].setupTypes(simpleTypes, complexTypes)
+		sequence.Elements[i].setup(
+			simpleTypes, complexTypes, elements)
+	}
+}
+
+func (simpleContent *SimpleContent) setup(
+	simpleTypes map[string]*SimpleType) {
+	if simpleContent.Extension != nil {
+		simpleContent.Extension.setup(simpleTypes)
+	}
+}
+
+func (extension *Extension) setup(simpleTypes map[string]*SimpleType) {
+	for i := range extension.Attributes {
+		extension.Attributes[i].setup(simpleTypes)
+	}
+}
+
+func (attribute *Attribute) setup(simpleTypes map[string]*SimpleType) {
+	if t, ok := simpleTypes[attribute.Type]; ok {
+		attribute.SimpleType = t
 	}
 }
 

@@ -11,13 +11,20 @@ type Element struct {
 	Type        string       `xml:"type,attr"`
 	MaxOccurs   string       `xml:"maxOccurs,attr"`
 	MinOccurs   string       `xml:"minOccurs,attr"`
+	Ref         string       `xml:"ref,attr"`
 	IdAttribute string       `xml:"idAttribute,attr"` // extension
 	SimpleType  *SimpleType  `xml:"simpleType"`
 	ComplexType *ComplexType `xml:"complexType"`
+	reference   *Element
 }
 
 type SimpleType struct {
-	Name string `xml:"name,attr"`
+	Name        string       `xml:"name,attr"`
+	Restriction *Restriction `xml:"restriction"`
+}
+
+type Restriction struct {
+	Base string `xml:"base,attr"`
 }
 
 type ComplexType struct {
@@ -32,7 +39,8 @@ type Sequence struct {
 }
 
 type SimpleContent struct {
-	Extension *Extension `xml:"extension"`
+	Extension   *Extension   `xml:"extension"`
+	Restriction *Restriction `xml:"restriction"`
 }
 
 type Extension struct {
@@ -40,7 +48,8 @@ type Extension struct {
 }
 
 type Attribute struct {
-	Name string `xml:"name,attr"`
-	Type string `xml:"type,attr"`
-	Use  string `xml:"type,use"`
+	Name       string      `xml:"name,attr"`
+	Type       string      `xml:"type,attr"`
+	Use        string      `xml:"use,attr"`
+	SimpleType *SimpleType `xml:"simpleType"`
 }

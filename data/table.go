@@ -6,9 +6,10 @@ import (
 )
 
 const ( // column types
-	Int  = iota
-	Str  = iota
-	Time = iota
+	String  = iota
+	Integer = iota
+	Float   = iota
+	Time    = iota
 )
 
 const ( // column flags
@@ -33,14 +34,16 @@ func (column *Column) sqlDesc() string {
 	var desc = encodeName(column.Name)
 
 	switch column.Type {
-	case Int:
+	case String:
+		desc += " varchar"
+	case Integer:
 		if column.Flags&PrimaryKey != 0 {
 			desc += " serial"
 		} else {
 			desc += " int"
 		}
-	case Str:
-		desc += " varchar"
+	case Float:
+		desc += " real"
 	case Time:
 		desc += " timestamp with time zone"
 	default:

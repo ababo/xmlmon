@@ -6,9 +6,9 @@ import (
 
 func Install(handle data.Handle) error {
 	columns := []data.Column{
-		{"id", data.Int, data.PrimaryKey, "", ""},
-		{"name", data.Str, data.NotNull | data.Unique, "", ""},
-		{"description", data.Str, 0, "", ""},
+		{"id", data.Integer, data.PrimaryKey, "", ""},
+		{"name", data.String, data.NotNull | data.Unique, "", ""},
+		{"description", data.String, 0, "", ""},
 	}
 	indexes := []data.Index{
 		{[]string{"name"}},
@@ -19,12 +19,12 @@ func Install(handle data.Handle) error {
 	}
 
 	columns = []data.Column{
-		{"id", data.Int, data.PrimaryKey, "", ""},
-		{"name", data.Str, data.NotNull | data.Unique, "", ""},
-		{"schema", data.Int, data.NotNull, "mon_schema", "id"},
-		{"url", data.Str, data.NotNull, "", ""},
-		{"update_period", data.Int, data.NotNull, "", ""},
-		{"snapshot_period", data.Int, data.NotNull, "", ""},
+		{"id", data.Integer, data.PrimaryKey, "", ""},
+		{"name", data.String, data.NotNull | data.Unique, "", ""},
+		{"schema", data.Integer, data.NotNull, "mon_schema", "id"},
+		{"url", data.String, data.NotNull, "", ""},
+		{"update_period", data.Integer, data.NotNull, "", ""},
+		{"snapshot_period", data.Integer, data.NotNull, "", ""},
 	}
 	if err := data.CreateTable(
 		handle, "mon_document", columns, indexes); err != nil {
@@ -32,10 +32,10 @@ func Install(handle data.Handle) error {
 	}
 
 	columns = []data.Column{
-		{"id", data.Int, data.PrimaryKey, "", ""},
-		{"schema", data.Int, data.NotNull, "mon_schema", "id"},
-		{"path", data.Str, data.NotNull, "", ""},
-		{"id_attribute", data.Str, 0, "", ""},
+		{"id", data.Integer, data.PrimaryKey, "", ""},
+		{"schema", data.Integer, data.NotNull, "mon_schema", "id"},
+		{"path", data.String, data.NotNull, "", ""},
+		{"id_attribute", data.String, 0, "", ""},
 	}
 	indexes = []data.Index{
 		{[]string{"schema", "path"}},

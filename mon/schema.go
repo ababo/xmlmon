@@ -45,16 +45,25 @@ func AddSchema(handle data.Handle, schema *Schema, xsdText io.Reader) error {
 			return err
 		}
 
+		var vtype int
+		if vtype, err = element.ValueType(); err != nil {
+			return err
+		}
+
 		columns2 := []data.Column{
-			{"document", data.Int,
+			{"document", data.Integer,
 				data.NotNull, "mon_document", "id"},
 			{"time", data.Time, data.NotNull, "", ""},
-			{"event", data.Int, data.NotNull, "", ""},
-			{"text", data.Str, 0, "", ""},
+			{"event", data.Integer, data.NotNull, "", ""},
+			{"value", valueToDataType(vtype), 0, "", ""},
 		}
 		for _, a := range element.Attributes() {
+			if vtype, err = a.ValueType(); err != nil {
+				return err
+			}
 			columns2 = append(columns2,
-				data.Column{a.Name, data.Str, 0, "", ""})
+				data.Column{"attr_" + a.Name,
+					valueToDataType(vtype), 0, "", ""})
 		}
 		indexes := []data.Index{
 			{[]string{"document", "time"}},
@@ -71,6 +80,21 @@ func AddSchema(handle data.Handle, schema *Schema, xsdText io.Reader) error {
 	}
 
 	return nil
+}
+
+func valueToDataType(xsdType int) int {
+	switch xsdType {
+	case xsd.String:
+		return data.String
+	case xsd.Integer:
+		return data.Integer
+	case xsd.Float:
+		return data.Float
+	case xsd.Time:
+		return data.Time
+	default:
+		return data.String
+	}
 }
 
 func FindSchema(handle data.Handle, name string) (*Schema, error) {

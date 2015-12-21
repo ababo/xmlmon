@@ -18,6 +18,15 @@ func (schema *Schema) Iterate(iterateFunc IterateFunc) error {
 
 func (element *Element) iterate(
 	path string, iterateFunc IterateFunc) error {
+	if len(element.Ref) != 0 {
+		if element.reference == nil {
+			return fmt.Errorf(
+				"unresolved reference (%s) in `element` (%s)",
+				element.Ref, element.Name)
+		}
+		return element.reference.iterate(path, iterateFunc)
+	}
+
 	path += "/" + element.Name
 	if err := iterateFunc(path, element); err != nil {
 		return err
@@ -26,6 +35,7 @@ func (element *Element) iterate(
 	if element.ComplexType != nil {
 		return element.ComplexType.iterate(path, iterateFunc)
 	} else if element.SimpleType != nil {
+	} else if _, err := xsdToValueType(element.Type); err == nil {
 	} else {
 		return fmt.Errorf("type of `element` (%s) neither "+
 			"corresponds to `simpleType` nor to `complexType` "+
@@ -39,11 +49,13 @@ func (complexType *ComplexType) iterate(
 	path string, iterateFunc IterateFunc) error {
 	if complexType.Sequence != nil {
 		return complexType.Sequence.iterate(path, iterateFunc)
+	} else if complexType.SimpleContent != nil {
 	} else {
-		return fmt.Errorf("`complexType` (%s) doesn't "+
-			"contain `sequence` (not supported)",
+		return fmt.Errorf("`complexType` (%s) neither contains "+
+			"`sequence` nor `simpleContent` (not supported)",
 			complexType.Name)
 	}
+	return nil
 }
 
 func (sequence *Sequence) iterate(
