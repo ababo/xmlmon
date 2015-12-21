@@ -36,19 +36,22 @@ func (simpleType *SimpleType) valueType() (int, error) {
 }
 
 func (restriction *Restriction) valueType() (int, error) {
+	if restriction.Choice != nil {
+		return 0, choiceNotSupported
+	}
 	return xsdToValueType(restriction.Base)
 }
 
 func (complexType *ComplexType) valueType() (int, error) {
 	if complexType.SimpleContent != nil {
-		complexType.SimpleContent.valueType()
+		return complexType.SimpleContent.valueType()
 	}
 	return String, nil
 }
 
 func (simpleContent *SimpleContent) valueType() (int, error) {
 	if simpleContent.Restriction != nil {
-		return simpleContent.valueType()
+		return simpleContent.Restriction.valueType()
 	}
 	return String, nil
 }

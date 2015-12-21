@@ -43,8 +43,14 @@ func (element *Element) iterate(
 	return nil
 }
 
+var choiceNotSupported = fmt.Errorf("xsd: `choice` not supported")
+
 func (complexType *ComplexType) iterate(
 	path string, iterateFunc IterateFunc) error {
+	if complexType.Choice != nil {
+		return choiceNotSupported
+	}
+
 	if complexType.Sequence != nil {
 		return complexType.Sequence.iterate(path, iterateFunc)
 	} else if complexType.SimpleContent != nil {
@@ -52,33 +58,47 @@ func (complexType *ComplexType) iterate(
 		return fmt.Errorf("xsd: no `sequence` or `simpleContent` "+
 			"found for `complexType` (%s)", complexType.Name)
 	}
+
 	return nil
 }
 
 func (sequence *Sequence) iterate(
 	path string, iterateFunc IterateFunc) error {
+	if sequence.Choices != nil {
+		return choiceNotSupported
+	}
 	for i := range sequence.Elements {
-		sequence.Elements[i].iterate(path, iterateFunc)
+		err := sequence.Elements[i].iterate(path, iterateFunc)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (element *Element) Attributes() []Attribute {
+func (element *Element) Attributes() ([]Attribute, error) {
 	if element.ComplexType == nil {
-		return nil
+		return nil, nil
 	}
 	if element.ComplexType.Attributes != nil {
-		return element.ComplexType.Attributes
+		return element.ComplexType.Attributes, nil
 	}
 	if element.ComplexType.SimpleContent != nil {
 		return element.ComplexType.SimpleContent.attributes()
 	}
-	return nil
+	return nil, nil
 }
 
-func (simpleContent *SimpleContent) attributes() []Attribute {
+func (simpleContent *SimpleContent) attributes() ([]Attribute, error) {
 	if simpleContent.Extension != nil {
-		return simpleContent.Extension.Attributes
+		return simpleContent.Extension.attributes()
 	}
-	return nil
+	return nil, nil
+}
+
+func (extension *Extension) attributes() ([]Attribute, error) {
+	if extension.Choice != nil {
+		return nil, choiceNotSupported
+	}
+	return extension.Attributes, nil
 }

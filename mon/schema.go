@@ -50,6 +50,11 @@ func AddSchema(handle data.Handle, schema *Schema, xsdText io.Reader) error {
 			return err
 		}
 
+		var attrs []xsd.Attribute
+		if attrs, err = element.Attributes(); err != nil {
+			return err
+		}
+
 		columns2 := []data.Column{
 			{"document", data.Integer,
 				data.NotNull, "mon_document", "id"},
@@ -57,7 +62,7 @@ func AddSchema(handle data.Handle, schema *Schema, xsdText io.Reader) error {
 			{"event", data.Integer, data.NotNull, "", ""},
 			{"value", valueToDataType(vtype), 0, "", ""},
 		}
-		for _, a := range element.Attributes() {
+		for _, a := range attrs {
 			if vtype, err = a.ValueType(); err != nil {
 				return err
 			}
@@ -75,6 +80,7 @@ func AddSchema(handle data.Handle, schema *Schema, xsdText io.Reader) error {
 
 		return nil
 	})
+
 	if err != nil {
 		return err
 	}

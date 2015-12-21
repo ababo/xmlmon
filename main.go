@@ -25,7 +25,7 @@ func main() {
 		log.Fatalf("failed to install data monitor: %s", err)
 	}
 
-	xsd, err := os.Open("tmp/tmp.xsd")
+	xsd, err := os.Open("tmp/etr.xsd")
 	if err != nil {
 		log.Fatalf("failed to read xsd file: %s", err)
 	}

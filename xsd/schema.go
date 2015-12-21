@@ -24,7 +24,8 @@ type SimpleType struct {
 }
 
 type Restriction struct {
-	Base string `xml:"base,attr"`
+	Base   string  `xml:"base,attr"`
+	Choice *Choice `xml:"choice"`
 }
 
 type ComplexType struct {
@@ -32,10 +33,12 @@ type ComplexType struct {
 	Sequence      *Sequence      `xml:"sequence"`
 	SimpleContent *SimpleContent `xml:"simpleContent"`
 	Attributes    []Attribute    `xml:"attribute"`
+	Choice        *Choice        `xml:"choice"`
 }
 
 type Sequence struct {
 	Elements []Element `xml:"element"`
+	Choices  []Choice  `xml:"choice"`
 }
 
 type SimpleContent struct {
@@ -45,6 +48,7 @@ type SimpleContent struct {
 
 type Extension struct {
 	Attributes []Attribute `xml:"attribute"`
+	Choice     *Choice     `xml:"choice"`
 }
 
 type Attribute struct {
@@ -52,4 +56,8 @@ type Attribute struct {
 	Type       string      `xml:"type,attr"`
 	Use        string      `xml:"use,attr"`
 	SimpleType *SimpleType `xml:"simpleType"`
+}
+
+type Choice struct {
+	// not supported
 }
