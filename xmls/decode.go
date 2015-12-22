@@ -85,15 +85,17 @@ func decodeSchema(decoder *xml.Decoder, attrs []xml.Attr) (*Element, error) {
 	}
 
 	intType := newType(Integer)
+	timeType := newType(Time)
 	types := map[string]*type_{
-		"string":        newType(String),
-		"byte":          intType,
-		"unsignedByte":  intType,
-		"short":         intType,
-		"unsignedShort": intType,
-		"int":           intType,
-		"float":         newType(Float),
-		"time":          newType(Time),
+		"xs:string":        newType(String),
+		"xs:byte":          intType,
+		"xs:unsignedByte":  intType,
+		"xs:short":         intType,
+		"xs:unsignedShort": intType,
+		"xs:int":           intType,
+		"xs:float":         newType(Float),
+		"xs:date":          timeType,
+		"xs:time":          timeType,
 	}
 
 	var err error
@@ -163,7 +165,7 @@ func decodeElement(decoder *xml.Decoder, attrs []xml.Attr,
 
 func decodeSimpleType(decoder *xml.Decoder,
 	attrs []xml.Attr, types map[string]*type_) (*type_, error) {
-	var type_ *type_ = newType(String)
+	var type_ *type_
 	for _, a := range attrs {
 		switch a.Name.Local {
 		case "name":
@@ -220,7 +222,7 @@ func decodeRestriction(decoder *xml.Decoder,
 
 func decodeComplexType(decoder *xml.Decoder,
 	attrs []xml.Attr, types map[string]*type_) (*type_, error) {
-	var type_ *type_ = newType(String)
+	var type_ *type_
 	for _, a := range attrs {
 		switch a.Name.Local {
 		case "name":
@@ -244,7 +246,7 @@ func decodeComplexType(decoder *xml.Decoder,
 				decoder, elt.Attr, types, type_)
 		case "attribute":
 			attr, err = decodeAttribute(decoder, elt.Attr, types)
-			if err != nil {
+			if err == nil {
 				type_.attributes = append(
 					type_.attributes, *attr)
 			}
@@ -309,7 +311,7 @@ func decodeExtension(decoder *xml.Decoder,
 		switch elt.Name.Local {
 		case "attribute":
 			attr, err = decodeAttribute(decoder, elt.Attr, types)
-			if err != nil {
+			if err == nil {
 				type_.attributes = append(
 					type_.attributes, *attr)
 			}
@@ -327,7 +329,7 @@ func decodeExtension(decoder *xml.Decoder,
 func decodeAttribute(decoder *xml.Decoder,
 	attrs []xml.Attr, types map[string]*type_) (*Attribute, error) {
 	attr := Attribute{"", String}
-	type_ := newType(String)
+	var type_ *type_
 	for _, a := range attrs {
 		switch a.Name.Local {
 		case "name":

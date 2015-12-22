@@ -8,7 +8,7 @@ func Install(handle data.Handle) error {
 	columns := []data.Column{
 		{"id", data.Integer, data.PrimaryKey, "", ""},
 		{"name", data.String, data.NotNull | data.Unique, "", ""},
-		{"description", data.String, 0, "", ""},
+		{"desc", data.String, 0, "", ""},
 	}
 	indexes := []data.Index{
 		{[]string{"name"}},
@@ -23,11 +23,11 @@ func Install(handle data.Handle) error {
 		{"name", data.String, data.NotNull | data.Unique, "", ""},
 		{"schema", data.Integer, data.NotNull, "mon_schema", "id"},
 		{"url", data.String, data.NotNull, "", ""},
-		{"update_period", data.Integer, data.NotNull, "", ""},
-		{"snapshot_period", data.Integer, data.NotNull, "", ""},
+		{"uperiod", data.Integer, data.NotNull, "", ""},
+		{"speriod", data.Integer, data.NotNull, "", ""},
 	}
 	if err := data.CreateTable(
-		handle, "mon_document", columns, indexes); err != nil {
+		handle, "mon_doc", columns, indexes); err != nil {
 		return err
 	}
 
@@ -35,7 +35,7 @@ func Install(handle data.Handle) error {
 		{"id", data.Integer, data.PrimaryKey, "", ""},
 		{"schema", data.Integer, data.NotNull, "mon_schema", "id"},
 		{"path", data.String, data.NotNull, "", ""},
-		{"id_attribute", data.String, 0, "", ""},
+		{"mon_id", data.String, 0, "", ""},
 	}
 	indexes = []data.Index{
 		{[]string{"schema", "path"}},

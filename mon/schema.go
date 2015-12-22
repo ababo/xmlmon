@@ -19,8 +19,8 @@ func NewSchema(name, desc string) *Schema {
 func AddSchema(handle data.Handle,
 	schema *Schema, root *xmls.Element) error {
 	columns := map[string]string{
-		"name":        schema.Name,
-		"description": schema.Desc,
+		"name": schema.Name,
+		"desc": schema.Desc,
 	}
 	var err error
 	if schema.id, err = data.InsertRow(
@@ -41,8 +41,8 @@ func AddSchema(handle data.Handle,
 
 		vtype := element.ValueType()
 		columns2 := []data.Column{
-			{"document", data.Integer,
-				data.NotNull, "mon_document", "id"},
+			{"doc", data.Integer,
+				data.NotNull, "mon_doc", "id"},
 			{"time", data.Time, data.NotNull, "", ""},
 			{"event", data.Integer, data.NotNull, "", ""},
 			{"value", valueToDataType(vtype), 0, "", ""},
@@ -54,7 +54,7 @@ func AddSchema(handle data.Handle,
 					valueToDataType(vtype), 0, "", ""})
 		}
 		indexes := []data.Index{
-			{[]string{"document", "time"}},
+			{[]string{"doc", "time"}},
 		}
 		if err := data.CreateTable(handle, "mon_path_"+fmt.Sprint(id),
 			columns2, indexes); err != nil {
@@ -84,13 +84,13 @@ func valueToDataType(xsdType int) int {
 
 func FindSchema(handle data.Handle, name string) (*Schema, error) {
 	rows, err := data.SelectRows(handle,
-		[]data.ColName{{"", "id"}, {"", "description"}},
+		[]data.ColName{{"", "id"}, {"", "desc"}},
 		[]data.Join{{"", "mon_schema", ""}},
 		data.Eq{data.ColName{"", "name"}, name}, nil, -1)
 	defer rows.Close()
 
 	if !rows.Next() {
-		return nil, fmt.Errorf("mon: schema (%s) not found", name)
+		return nil, fmt.Errorf("mon: schema (`%s`) not found", name)
 	}
 
 	var schema Schema

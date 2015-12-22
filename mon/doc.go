@@ -26,13 +26,13 @@ func AddDoc(handle data.Handle, doc *Doc) error {
 	}
 
 	columns := map[string]string{
-		"name":            doc.Name,
-		"schema":          fmt.Sprint(schema.id),
-		"url":             doc.Url,
-		"update_period":   fmt.Sprint(doc.UpdatePeriod),
-		"snapshot_period": fmt.Sprint(doc.SnapshotPeriod),
+		"name":    doc.Name,
+		"schema":  fmt.Sprint(schema.id),
+		"url":     doc.Url,
+		"uperiod": fmt.Sprint(doc.UpdatePeriod),
+		"speriod": fmt.Sprint(doc.SnapshotPeriod),
 	}
-	doc.id, err = data.InsertRow(handle, "mon_document", columns, "id")
+	doc.id, err = data.InsertRow(handle, "mon_doc", columns, "id")
 
 	return err
 }
@@ -40,19 +40,19 @@ func AddDoc(handle data.Handle, doc *Doc) error {
 func FindDoc(handle data.Handle, name string) (*Doc, error) {
 	rows, err := data.SelectRows(handle,
 		[]data.ColName{
-			{"mon_document", "id"},
+			{"mon_doc", "id"},
 			{"mon_schema", "name"},
 			{"", "url"},
-			{"", "update_period"},
-			{"", "snapshot_period"}},
+			{"", "uperiod"},
+			{"", "speriod"}},
 		[]data.Join{
-			{"", "mon_document", "schema"},
+			{"", "mon_doc", "schema"},
 			{"id", "mon_schema", ""}},
-		data.Eq{data.ColName{"mon_document", "name"}, name}, nil, -1)
+		data.Eq{data.ColName{"mon_doc", "name"}, name}, nil, -1)
 	defer rows.Close()
 
 	if !rows.Next() {
-		return nil, fmt.Errorf("mon: document (%s) not found", name)
+		return nil, fmt.Errorf("mon: document (`%s`) not found", name)
 	}
 
 	var doc Doc

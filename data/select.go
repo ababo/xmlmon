@@ -102,7 +102,7 @@ func sqlWhere(where interface{}) (string, error) {
 		}
 		return fmt.Sprintf("%s = %s", left, right), nil
 	default:
-		return "", fmt.Errorf("data: unknown type (%T) "+
+		return "", fmt.Errorf("data: unknown type (`%T`) "+
 			"in `where` clause of SelectRows", where)
 	}
 }

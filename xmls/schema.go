@@ -26,7 +26,7 @@ type type_ struct {
 }
 
 func (element *Element) Attributes() []Attribute {
-	attrs := make([]Attribute, len(element.type_.attributes))
+	var attrs []Attribute
 	for type_ := element.type_; type_ != nil; type_ = type_.sourceType {
 		attrs = append(attrs, type_.attributes...)
 	}
@@ -34,7 +34,7 @@ func (element *Element) Attributes() []Attribute {
 }
 
 func (element *Element) Children() []Element {
-	children := make([]Element, len(element.type_.children))
+	var children []Element
 	for type_ := element.type_; type_ != nil; type_ = type_.sourceType {
 		children = append(children, type_.children...)
 	}
