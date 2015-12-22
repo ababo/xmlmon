@@ -2,9 +2,8 @@ package mon
 
 import (
 	"btc/data"
-	"btc/xsd"
+	"btc/xmls"
 	"fmt"
-	"io"
 )
 
 type Schema struct {
@@ -17,7 +16,8 @@ func NewSchema(name, desc string) *Schema {
 	return &Schema{0, name, desc}
 }
 
-func AddSchema(handle data.Handle, schema *Schema, xsdText io.Reader) error {
+func AddSchema(handle data.Handle,
+	schema *Schema, root *xmls.Element) error {
 	columns := map[string]string{
 		"name":        schema.Name,
 		"description": schema.Desc,
@@ -28,33 +28,18 @@ func AddSchema(handle data.Handle, schema *Schema, xsdText io.Reader) error {
 		return err
 	}
 
-	var schema2 *xsd.Schema
-	schema2, err = xsd.New(xsdText)
-	if err != nil {
-		return err
-	}
-
-	err = schema2.Iterate(func(path string, element *xsd.Element) error {
+	traverseFunc := func(path string, element *xmls.Element) error {
 		columns := map[string]string{
-			"schema":       fmt.Sprint(schema.id),
-			"path":         path,
-			"id_attribute": element.IdAttribute,
+			"schema": fmt.Sprint(schema.id),
+			"path":   path,
+			"mon_id": element.MonId,
 		}
 		id, err := data.InsertRow(handle, "mon_path", columns, "id")
 		if err != nil {
 			return err
 		}
 
-		var vtype int
-		if vtype, err = element.ValueType(); err != nil {
-			return err
-		}
-
-		var attrs []xsd.Attribute
-		if attrs, err = element.Attributes(); err != nil {
-			return err
-		}
-
+		vtype := element.ValueType()
 		columns2 := []data.Column{
 			{"document", data.Integer,
 				data.NotNull, "mon_document", "id"},
@@ -62,10 +47,8 @@ func AddSchema(handle data.Handle, schema *Schema, xsdText io.Reader) error {
 			{"event", data.Integer, data.NotNull, "", ""},
 			{"value", valueToDataType(vtype), 0, "", ""},
 		}
-		for _, a := range attrs {
-			if vtype, err = a.ValueType(); err != nil {
-				return err
-			}
+		for _, a := range element.Attributes() {
+			vtype := a.ValueType
 			columns2 = append(columns2,
 				data.Column{"attr_" + a.Name,
 					valueToDataType(vtype), 0, "", ""})
@@ -79,24 +62,20 @@ func AddSchema(handle data.Handle, schema *Schema, xsdText io.Reader) error {
 		}
 
 		return nil
-	})
-
-	if err != nil {
-		return err
 	}
 
-	return nil
+	return root.Traverse("", traverseFunc)
 }
 
 func valueToDataType(xsdType int) int {
 	switch xsdType {
-	case xsd.String:
+	case xmls.String:
 		return data.String
-	case xsd.Integer:
+	case xmls.Integer:
 		return data.Integer
-	case xsd.Float:
+	case xmls.Float:
 		return data.Float
-	case xsd.Time:
+	case xmls.Time:
 		return data.Time
 	default:
 		return data.String

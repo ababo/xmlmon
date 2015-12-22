@@ -3,9 +3,9 @@ package main
 import (
 	"btc/data"
 	"btc/mon"
+	"btc/xmls"
 	"database/sql"
 	"log"
-	"os"
 )
 
 func main() {
@@ -25,20 +25,19 @@ func main() {
 		log.Fatalf("failed to install data monitor: %s", err)
 	}
 
-	xsd, err := os.Open("tmp/etr.xsd")
+	var root *xmls.Element
+	root, err = xmls.FromFile("tmp/etr.xsd")
 	if err != nil {
-		log.Fatalf("failed to read xsd file: %s", err)
+		log.Fatalf("failed to create xml schema: %s", err)
 	}
-	defer xsd.Close()
 
 	schema := mon.NewSchema("etr", "probe ETR-290 checks")
-	if err = mon.AddSchema(db, schema, xsd); err != nil {
+	if err = mon.AddSchema(db, schema, root); err != nil {
 		log.Fatalf("failed to install schema: %s", err)
 	}
 
 	doc := mon.NewDoc("hw4_172_etr", "etr",
-		"http://10.0.30.172/probe/data/AnaEtrDetails?inputId=0&"+
-			"etrEngineNo=0&detailsId=-1&showDisabledChecks=true",
+		"http://10.0.30.172/probe/etrdata?inputId=0&tuningSetupId=1",
 		60, 86400)
 	if err = mon.AddDoc(db, doc); err != nil {
 		log.Fatalf("failed to add document: %s", err)
