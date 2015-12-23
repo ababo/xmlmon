@@ -42,7 +42,11 @@ func (element *Element) Children() []Element {
 }
 
 func (element *Element) ValueType() int {
-	return element.type_.valueType
+	vtype := String
+	for type_ := element.type_; type_ != nil; type_ = type_.sourceType {
+		vtype = type_.valueType
+	}
+	return vtype
 }
 
 type TraverseFunc func(path string, element *Element) error

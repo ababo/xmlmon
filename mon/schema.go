@@ -45,8 +45,13 @@ func AddSchema(handle data.Handle,
 				data.NotNull, "mon_doc", "id"},
 			{"time", data.Time, data.NotNull, "", ""},
 			{"event", data.Integer, data.NotNull, "", ""},
-			{"value", valueToDataType(vtype), 0, "", ""},
 		}
+
+		if len(element.Children()) == 0 {
+			columns2 = append(columns2, data.Column{
+				"value", valueToDataType(vtype), 0, "", ""})
+		}
+
 		for _, a := range element.Attributes() {
 			vtype := a.ValueType
 			columns2 = append(columns2,

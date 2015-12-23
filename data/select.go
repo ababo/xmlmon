@@ -23,7 +23,8 @@ type Eq struct {
 }
 
 type Order struct {
-	ColName
+	Table      string
+	Column     string
 	Descending bool
 }
 
@@ -105,6 +106,10 @@ func sqlWhere(where interface{}) (string, error) {
 		return "", fmt.Errorf("data: unknown type (`%T`) "+
 			"in `where` clause of SelectRows", where)
 	}
+}
+
+func (order *Order) sqlDesc() string {
+	return (&ColName{order.Table, order.Column}).sqlDesc()
 }
 
 func sqlOrders(orders []Order) string {

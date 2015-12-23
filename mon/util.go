@@ -10,9 +10,7 @@ func Install(handle data.Handle) error {
 		{"name", data.String, data.NotNull | data.Unique, "", ""},
 		{"desc", data.String, 0, "", ""},
 	}
-	indexes := []data.Index{
-		{[]string{"name"}},
-	}
+	indexes := []data.Index{{[]string{"name"}}}
 	if err := data.CreateTable(handle,
 		"mon_schema", columns, indexes); err != nil {
 		return err
@@ -37,9 +35,7 @@ func Install(handle data.Handle) error {
 		{"path", data.String, data.NotNull, "", ""},
 		{"mon_id", data.String, 0, "", ""},
 	}
-	indexes = []data.Index{
-		{[]string{"schema", "path"}},
-	}
+	indexes = []data.Index{{[]string{"schema"}}}
 	if err := data.CreateTable(handle,
 		"mon_path", columns, indexes); err != nil {
 		return err
