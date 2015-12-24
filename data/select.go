@@ -6,20 +6,10 @@ import (
 	"strings"
 )
 
-type ColName struct {
-	Table  string
-	Column string
-}
-
 type Join struct {
 	LeftColumn  string
 	Table       string
 	RightColumn string
-}
-
-type Eq struct {
-	Left  interface{}
-	Right interface{}
 }
 
 type Order struct {
@@ -79,33 +69,6 @@ func sqlJoins(joins []Join) string {
 		}
 	}
 	return sql
-}
-
-func sqlWhere(where interface{}) (string, error) {
-	var left, right string
-	var err error
-
-	switch where.(type) {
-	case int:
-		return encodeValue(fmt.Sprint(where)), nil
-	case string:
-		return encodeValue(where.(string)), nil
-	case ColName:
-		colName := where.(ColName)
-		return colName.sqlDesc(), nil
-	case Eq:
-		var eq Eq = where.(Eq)
-		if left, err = sqlWhere(eq.Left); err != nil {
-			return "", err
-		}
-		if right, err = sqlWhere(eq.Right); err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("%s = %s", left, right), nil
-	default:
-		return "", fmt.Errorf("data: unknown type (`%T`) "+
-			"in `where` clause of SelectRows", where)
-	}
 }
 
 func (order *Order) sqlDesc() string {

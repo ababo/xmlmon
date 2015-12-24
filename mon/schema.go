@@ -18,7 +18,7 @@ func NewSchema(name, desc string) *Schema {
 
 func AddSchema(handle data.Handle,
 	schema *Schema, root *xmls.Element) error {
-	columns := map[string]string{
+	columns := map[string]interface{}{
 		"name": schema.Name,
 		"desc": schema.Desc,
 	}
@@ -30,10 +30,10 @@ func AddSchema(handle data.Handle,
 
 	traverseFunc := func(
 		element, parent *xmls.Element, path string) error {
-		columns := map[string]string{
-			"schema": fmt.Sprint(schema.id),
+		columns := map[string]interface{}{
+			"schema": schema.id,
 			"path":   path,
-			"mon_id": element.MonId,
+			"mon_id": data.ToNullString(element.MonId),
 		}
 
 		id, err := data.InsertRow(handle, "mon_path", columns, "id")
@@ -105,6 +105,9 @@ func FindSchema(handle data.Handle, name string) (*Schema, error) {
 		[]data.ColName{{"", "id"}, {"", "desc"}},
 		[]data.Join{{"", "mon_schema", ""}},
 		data.Eq{data.ColName{"", "name"}, name}, nil, -1)
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	if !rows.Next() {

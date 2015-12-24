@@ -2,6 +2,7 @@ package mon
 
 import (
 	"btc/data"
+	"database/sql"
 	"strings"
 	"time"
 )
@@ -10,7 +11,7 @@ type path struct {
 	id     int
 	schema int
 	path   string
-	monId  string
+	monId  sql.NullString
 }
 
 func findSchemaPaths(handle data.Handle, schemaId int) ([]path, error) {

@@ -42,6 +42,10 @@ func CommitDoc(handle data.Handle,
 		}
 	}
 
+	if err == nil {
+		err = doc.Update(handle)
+	}
+
 	return err
 }
 
@@ -71,8 +75,8 @@ func getMonIdValue(context *commitContext,
 	}
 
 	var monIdValue string
-	if len(paths[0].monId) != 0 {
-		attr := findAttr(attrs, paths[0].monId)
+	if paths[0].monId.Valid {
+		attr := findAttr(attrs, paths[0].monId.String)
 		if attr == nil || len(attr.Value) == 0 {
 			return "", fmt.Errorf("mon: `monId` attribute "+
 				"(`%s`) not found for element path (`%s`)",

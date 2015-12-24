@@ -23,6 +23,7 @@ func Install(handle data.Handle) error {
 		{"url", data.String, data.NotNull, "", ""},
 		{"uperiod", data.Integer, data.NotNull, "", ""},
 		{"speriod", data.Integer, data.NotNull, "", ""},
+		{"utime", data.Time, 0, "", ""},
 	}
 	if err := data.CreateTable(
 		handle, "mon_doc", columns, indexes); err != nil {

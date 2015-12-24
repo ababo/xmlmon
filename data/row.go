@@ -6,7 +6,7 @@ import (
 )
 
 func InsertRow(handle Handle, table string,
-	columns map[string]string, id_column string) (int, error) {
+	columns map[string]interface{}, id_column string) (int, error) {
 	var keys, values []string
 	for k, v := range columns {
 		keys = append(keys, encodeName(k))
@@ -38,4 +38,26 @@ func InsertRow(handle Handle, table string,
 	}
 
 	return id, nil
+}
+
+func UpdateRows(handle Handle, table string,
+	columns map[string]interface{}, where interface{}) error {
+	var assts []string
+	for k, v := range columns {
+		assts = append(assts, encodeName(k)+" = "+encodeValue(v))
+	}
+
+	sql := fmt.Sprintf("UPDATE %s SET %s",
+		encodeName(table), strings.Join(assts, ", "))
+
+	if where != nil {
+		expr, err := sqlWhere(where)
+		if err != nil {
+			return err
+		}
+		sql += " WHERE " + expr
+	}
+
+	_, err := handle.Query(sql)
+	return err
 }
