@@ -8,7 +8,6 @@ import (
 const ( // column types
 	String  = iota
 	Integer = iota
-	Float   = iota
 	Time    = iota
 )
 
@@ -42,8 +41,6 @@ func (column *Column) sqlDesc() string {
 		} else {
 			desc += " int"
 		}
-	case Float:
-		desc += " real"
 	case Time:
 		desc += " timestamp with time zone"
 	default:

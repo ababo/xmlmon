@@ -87,14 +87,8 @@ func AddSchema(handle data.Handle,
 
 func valueToDataType(xsdType int) int {
 	switch xsdType {
-	case xmls.String:
-		return data.String
 	case xmls.Integer:
 		return data.Integer
-	case xmls.Float:
-		return data.Float
-	case xmls.Time:
-		return data.Time
 	default:
 		return data.String
 	}

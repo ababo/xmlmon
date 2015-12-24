@@ -18,19 +18,32 @@ func FromFile(xsdFilename string) (*Element, error) {
 }
 
 func New(xsdText io.Reader) (*Element, error) {
-	decoder := xml.NewDecoder(xsdText)
+	intType := newType(Integer, true)
+	types := map[string]*type_{
+		"xs:string":        newType(String, true),
+		"xs:byte":          intType,
+		"xs:unsignedByte":  intType,
+		"xs:short":         intType,
+		"xs:unsignedShort": intType,
+		"xs:int":           intType,
+	}
 
 	var err error
 	var root *Element
+	decoder := xml.NewDecoder(xsdText)
 	err = handleTokens(decoder, func(elt *xml.StartElement) error {
 		if elt.Name.Local != "schema" {
 			msg := "xmls: expected `xs:schema` but found `%s`"
 			return fmt.Errorf(msg, elt.Name.Local)
 		}
-		root, err = decodeSchema(decoder, elt.Attr)
+		root, err = decodeSchema(decoder, elt.Attr, types)
 		return err
 	})
 	if err != io.EOF {
+		return nil, err
+	}
+
+	if err = checkUndefinedTypes(types); err != nil {
 		return nil, err
 	}
 
@@ -39,6 +52,15 @@ func New(xsdText io.Reader) (*Element, error) {
 	}
 
 	return root, nil
+}
+
+func checkUndefinedTypes(types map[string]*type_) error {
+	for k, v := range types {
+		if !v.defined {
+			return fmt.Errorf("xmls: type (`%s`) undefined", k)
+		}
+	}
+	return nil
 }
 
 func checkDanglingMonIds(root *Element) error {
@@ -75,8 +97,8 @@ func handleTokens(decoder *xml.Decoder,
 	}
 }
 
-func newType(valueType int) *type_ {
-	return &type_{nil, nil, nil, valueType}
+func newType(valueType int, defined bool) *type_ {
+	return &type_{nil, nil, nil, valueType, defined}
 }
 
 func findType(types map[string]*type_, name string) *type_ {
@@ -84,13 +106,14 @@ func findType(types map[string]*type_, name string) *type_ {
 		return type_
 	}
 
-	type_ := newType(String)
+	type_ := newType(String, false)
 	types[name] = type_
 
 	return type_
 }
 
-func decodeSchema(decoder *xml.Decoder, attrs []xml.Attr) (*Element, error) {
+func decodeSchema(decoder *xml.Decoder, attrs []xml.Attr,
+	types map[string]*type_) (*Element, error) {
 	for _, a := range attrs {
 		switch a.Name.Local {
 		case "xs", "attributeFormDefault", "elementFormDefault":
@@ -98,17 +121,6 @@ func decodeSchema(decoder *xml.Decoder, attrs []xml.Attr) (*Element, error) {
 			msg := "xmls: unsupported `schema` attribute (`%s`)"
 			return nil, fmt.Errorf(msg, a.Name.Local)
 		}
-	}
-
-	intType := newType(Integer)
-	types := map[string]*type_{
-		"xs:string":        newType(String),
-		"xs:byte":          intType,
-		"xs:unsignedByte":  intType,
-		"xs:short":         intType,
-		"xs:unsignedShort": intType,
-		"xs:int":           intType,
-		"xs:float":         newType(Float),
 	}
 
 	var err error
@@ -178,7 +190,7 @@ func decodeElement(decoder *xml.Decoder, attrs []xml.Attr,
 
 func decodeSimpleType(decoder *xml.Decoder,
 	attrs []xml.Attr, types map[string]*type_) (*type_, error) {
-	type_ := &type_{}
+	type_ := newType(String, false)
 	for _, a := range attrs {
 		switch a.Name.Local {
 		case "name":
@@ -203,6 +215,7 @@ func decodeSimpleType(decoder *xml.Decoder,
 		return err
 	})
 
+	type_.defined = true
 	return type_, err
 }
 
@@ -235,7 +248,7 @@ func decodeRestriction(decoder *xml.Decoder,
 
 func decodeComplexType(decoder *xml.Decoder,
 	attrs []xml.Attr, types map[string]*type_) (*type_, error) {
-	type_ := &type_{}
+	type_ := newType(String, false)
 	for _, a := range attrs {
 		switch a.Name.Local {
 		case "name":
@@ -271,6 +284,7 @@ func decodeComplexType(decoder *xml.Decoder,
 		return err
 	})
 
+	type_.defined = true
 	return type_, err
 }
 

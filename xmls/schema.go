@@ -3,8 +3,6 @@ package xmls
 const ( // value types
 	String  = iota
 	Integer = iota
-	Float   = iota
-	Time    = iota
 )
 
 type Attribute struct {
@@ -23,6 +21,7 @@ type type_ struct {
 	attributes []Attribute
 	children   []Element
 	valueType  int
+	defined    bool
 }
 
 func (element *Element) Attributes() []Attribute {
