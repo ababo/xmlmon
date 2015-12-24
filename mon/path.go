@@ -3,6 +3,7 @@ package mon
 import (
 	"btc/data"
 	"database/sql"
+	"encoding/xml"
 	"strings"
 	"time"
 )
@@ -49,12 +50,17 @@ func filterPaths(paths []path, prefix string) []path {
 }
 
 type element struct {
-	attrs map[string]string
-	value string
+	attrs    map[string]string
+	value    string
+	preserve bool
+}
+
+func (element *element) isChanged(attrs []xml.Attr, value string) bool {
+	return false
 }
 
 // element's monId value => element
-type parentState map[string]element
+type parentState map[string]*element
 
 // parent's monId value => parentState
 type pathState map[string]parentState
@@ -64,5 +70,5 @@ type docState map[string]pathState
 
 func computePathState(handle data.Handle,
 	path *path, doc int, timestamp time.Time) (pathState, error) {
-	return nil, nil
+	return make(pathState), nil
 }

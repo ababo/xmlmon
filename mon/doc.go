@@ -73,15 +73,14 @@ func FindDoc(handle data.Handle, name string) (*Doc, error) {
 	return &doc, nil
 }
 
-func (doc *Doc) Update(handle data.Handle) error {
-	now := time.Now()
-	if doc.UpdateTime.Valid && doc.UpdateTime.Time.After(now) {
+func (doc *Doc) Update(handle data.Handle, updateTime time.Time) error {
+	if doc.UpdateTime.Valid && doc.UpdateTime.Time.After(updateTime) {
 		return fmt.Errorf("mon: document (`%s`) "+
 			"last update time (`%s`) in future",
 			doc.Name, doc.UpdateTime.Time.String())
 	}
 
 	return data.UpdateRows(handle, "mon_doc",
-		map[string]interface{}{"utime": now},
+		map[string]interface{}{"utime": updateTime},
 		data.Eq{data.ColName{"", "id"}, doc.id})
 }

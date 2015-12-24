@@ -101,7 +101,6 @@ func decodeSchema(decoder *xml.Decoder, attrs []xml.Attr) (*Element, error) {
 	}
 
 	intType := newType(Integer)
-	timeType := newType(Time)
 	types := map[string]*type_{
 		"xs:string":        newType(String),
 		"xs:byte":          intType,
@@ -110,8 +109,6 @@ func decodeSchema(decoder *xml.Decoder, attrs []xml.Attr) (*Element, error) {
 		"xs:unsignedShort": intType,
 		"xs:int":           intType,
 		"xs:float":         newType(Float),
-		"xs:date":          timeType,
-		"xs:time":          timeType,
 	}
 
 	var err error
@@ -181,7 +178,7 @@ func decodeElement(decoder *xml.Decoder, attrs []xml.Attr,
 
 func decodeSimpleType(decoder *xml.Decoder,
 	attrs []xml.Attr, types map[string]*type_) (*type_, error) {
-	var type_ *type_
+	type_ := &type_{}
 	for _, a := range attrs {
 		switch a.Name.Local {
 		case "name":
@@ -238,7 +235,7 @@ func decodeRestriction(decoder *xml.Decoder,
 
 func decodeComplexType(decoder *xml.Decoder,
 	attrs []xml.Attr, types map[string]*type_) (*type_, error) {
-	var type_ *type_
+	type_ := &type_{}
 	for _, a := range attrs {
 		switch a.Name.Local {
 		case "name":
