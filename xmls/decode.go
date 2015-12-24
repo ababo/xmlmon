@@ -34,7 +34,23 @@ func New(xsdText io.Reader) (*Element, error) {
 		return nil, err
 	}
 
+	if err = checkDanglingMonIds(root); err != nil {
+		return nil, err
+	}
+
 	return root, nil
+}
+
+func checkDanglingMonIds(root *Element) error {
+	traverseFunc := func(element, parent *Element, path string) error {
+		if len(element.MonId) != 0 && element.MonIdAttr() == nil {
+			return fmt.Errorf("xmls: `monId` attribute (`%s`) "+
+				"not found for element (`%s`)",
+				element.MonId, element.Name)
+		}
+		return nil
+	}
+	return root.Traverse(traverseFunc)
 }
 
 func handleTokens(decoder *xml.Decoder,

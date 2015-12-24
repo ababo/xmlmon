@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 )
 
 func CommitDoc(handle data.Handle,
@@ -35,64 +36,83 @@ func CommitDoc(handle data.Handle,
 			elt := token.(xml.StartElement)
 			pathStr := "/" + elt.Name.Local
 			paths = filterPaths(paths, pathStr)
-			err = commitPathTree(handle, decoder, doc.id,
-				paths, pathStr, elt.Attr, snapshot)
+			context := commitContext{handle, decoder,
+				schema.id, doc.id, snapshot, make(docState)}
+			return commitPathTree(&context, "", paths, elt.Attr)
 		}
-		break
 	}
 
 	return err
 }
 
-type path struct {
-	id    int
-	path  string
-	monId string
+type commitContext struct {
+	handle   data.Handle
+	decoder  *xml.Decoder
+	schema   int
+	doc      int
+	snapshot bool
+	state    docState
 }
 
-func findSchemaPaths(handle data.Handle, schemaId int) ([]path, error) {
-	rows, err := data.SelectRows(handle,
-		[]data.ColName{{"", "id"}, {"", "path"}, {"", "mon_id"}},
-		[]data.Join{{"", "mon_path", ""}},
-		data.Eq{data.ColName{"", "schema"}, schemaId},
-		[]data.Order{{"", "path", false}}, -1)
-	if err != nil {
-		return nil, err
-	}
-
-	var paths []path
-	for rows.Next() {
-		var path path
-		if err = rows.Scan(
-			&path.id, &path.path, &path.monId); err != nil {
-			return nil, err
-		}
-		paths = append(paths, path)
-	}
-
-	return paths, nil
-}
-
-func filterPaths(paths []path, prefix string) []path {
-	var filtered []path
-	for _, p := range paths {
-		if p.path == prefix || strings.HasPrefix(p.path, prefix+"/") {
-			filtered = append(filtered, p)
+func findAttr(attrs []xml.Attr, name string) *xml.Attr {
+	for i := range attrs {
+		if attrs[i].Name.Local == name {
+			return &attrs[i]
 		}
 	}
-	return filtered
+	return nil
 }
 
-func commitPathTree(handle data.Handle, decoder *xml.Decoder, docId int,
-	paths []path, pathStr string, attrs []xml.Attr, snapshot bool) error {
+func getMonIdValue(context *commitContext,
+	parent string, paths []path, attrs []xml.Attr) (string, error) {
 	if len(paths) == 0 {
-		return fmt.Errorf(
-			"mon: element path (`%s`) not found", pathStr)
+		return "", fmt.Errorf(
+			"mon: element path (`%s`) not found", paths[0].path)
+	}
+
+	var monIdValue string
+	if len(paths[0].monId) != 0 {
+		attr := findAttr(attrs, paths[0].monId)
+		if attr == nil || len(attr.Value) == 0 {
+			return "", fmt.Errorf("mon: `monId` attribute "+
+				"(`%s`) not found for element path (`%s`)",
+				paths[0].monId, paths[0])
+		}
+		_, ok := context.state[paths[0].path][parent][attr.Value]
+		if ok {
+			return "", fmt.Errorf("mon: non-unique `monId` "+
+				"value (`%s`) for path (`%s`) and "+
+				"parent (`%s`)", attr.Value, paths[0].path,
+				parent)
+		}
+		monIdValue = attr.Value
+	} else if _, ok := context.state[paths[0].path]; ok {
+		return "", fmt.Errorf("mon: multiple elements for "+
+			"path (`%x`) without `monId`", paths[0].path)
+	}
+
+	if _, ok := context.state[paths[0].path]; !ok {
+		var err error
+		context.state[paths[0].path], err = computePathState(
+			context.handle, &paths[0], context.doc, time.Now())
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return monIdValue, nil
+}
+
+func commitPathTree(context *commitContext,
+	parent string, paths []path, attrs []xml.Attr) error {
+	monIdValue, err := getMonIdValue(context, parent, paths, attrs)
+	if err != nil {
+		return err
 	}
 
 	var value string
 	for {
-		token, err := decoder.Token()
+		token, err := context.decoder.Token()
 		if err != nil {
 			return err
 		}
@@ -100,11 +120,11 @@ func commitPathTree(handle data.Handle, decoder *xml.Decoder, docId int,
 		switch token.(type) {
 		case xml.StartElement:
 			elt := token.(xml.StartElement)
-			pathStr2 := pathStr + "/" + elt.Name.Local
-			paths2 := filterPaths(paths, pathStr2)
+			path := paths[0].path + "/" + elt.Name.Local
+			paths2 := filterPaths(paths, path)
 
-			err = commitPathTree(handle, decoder, docId,
-				paths2, pathStr2, elt.Attr, snapshot)
+			err = commitPathTree(context,
+				monIdValue, paths2, elt.Attr)
 			if err != nil {
 				return err
 			}
@@ -114,21 +134,21 @@ func commitPathTree(handle data.Handle, decoder *xml.Decoder, docId int,
 			if len(paths) > 1 && len(trimmed) != 0 {
 				return fmt.Errorf("mon: no value "+
 					"expected for element path (`%s`)",
-					pathStr)
+					paths[0].path)
 			} else {
 				value += " " + trimmed
 			}
 		case xml.EndElement:
-			return commitPath(handle, docId,
-				&paths[0], attrs, value, snapshot)
+			return commitPath(context,
+				parent, &paths[0], attrs, value)
 		}
 	}
 
 	return nil
 }
 
-func commitPath(handle data.Handle, docId int, path *path,
-	attrs []xml.Attr, value string, snapshot bool) error {
+func commitPath(context *commitContext, parent string,
+	path *path, attrs []xml.Attr, value string) error {
 	fmt.Printf("commitPath path: %s\n", path.path)
 	return nil
 }

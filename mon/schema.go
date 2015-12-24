@@ -28,12 +28,14 @@ func AddSchema(handle data.Handle,
 		return err
 	}
 
-	traverseFunc := func(path string, element *xmls.Element) error {
+	traverseFunc := func(
+		element, parent *xmls.Element, path string) error {
 		columns := map[string]string{
 			"schema": fmt.Sprint(schema.id),
 			"path":   path,
 			"mon_id": element.MonId,
 		}
+
 		id, err := data.InsertRow(handle, "mon_path", columns, "id")
 		if err != nil {
 			return err
@@ -41,10 +43,15 @@ func AddSchema(handle data.Handle,
 
 		vtype := element.ValueType()
 		columns2 := []data.Column{
-			{"doc", data.Integer,
-				data.NotNull, "mon_doc", "id"},
+			{"doc", data.Integer, data.NotNull, "mon_doc", "id"},
 			{"time", data.Time, data.NotNull, "", ""},
 			{"event", data.Integer, data.NotNull, "", ""},
+		}
+
+		if parent != nil && len(parent.MonId) != 0 {
+			atype := valueToDataType(parent.MonIdAttr().ValueType)
+			columns2 = append(columns2, data.Column{
+				"parent", atype, data.NotNull, "", ""})
 		}
 
 		if len(element.Children()) == 0 {
@@ -52,15 +59,21 @@ func AddSchema(handle data.Handle,
 				"value", valueToDataType(vtype), 0, "", ""})
 		}
 
-		for _, a := range element.Attributes() {
-			vtype := a.ValueType
-			columns2 = append(columns2,
-				data.Column{"attr_" + a.Name,
-					valueToDataType(vtype), 0, "", ""})
-		}
 		indexes := []data.Index{
 			{[]string{"doc", "time"}},
 		}
+
+		for _, a := range element.Attributes() {
+			flags := 0
+			if a.Name == element.MonId {
+				flags = data.NotNull
+			}
+			vtype := valueToDataType(a.ValueType)
+			columns2 = append(columns2,
+				data.Column{"attr_" + a.Name,
+					vtype, flags, "", ""})
+		}
+
 		if err := data.CreateTable(handle, "mon_path_"+fmt.Sprint(id),
 			columns2, indexes); err != nil {
 			return err
@@ -69,7 +82,7 @@ func AddSchema(handle data.Handle,
 		return nil
 	}
 
-	return root.Traverse("", traverseFunc)
+	return root.Traverse(traverseFunc)
 }
 
 func valueToDataType(xsdType int) int {
