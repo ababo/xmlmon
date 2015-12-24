@@ -29,7 +29,34 @@ type Index struct {
 	Columns []string
 }
 
-func (column *Column) sqlDesc() string {
+func CreateTable(handle Handle, name string,
+	columns []Column, indexes []Index) error {
+	var names []string
+	for i := range columns {
+		desc, err := columns[i].sqlDesc()
+		if err != nil {
+			return err
+		}
+		names = append(names, desc)
+	}
+
+	sql := fmt.Sprintf("CREATE TABLE %s(%s)",
+		encodeName(name), strings.Join(names, ", "))
+	if _, err := handle.Query(sql); err != nil {
+		return err
+	}
+
+	for i := range indexes {
+		sql = "CREATE " + indexes[i].sqlDesc(name)
+		if _, err := handle.Query(sql); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (column *Column) sqlDesc() (string, error) {
 	var desc = encodeName(column.Name)
 
 	switch column.Type {
@@ -44,7 +71,8 @@ func (column *Column) sqlDesc() string {
 	case Time:
 		desc += " timestamp with time zone"
 	default:
-		desc += " ?"
+		return "", fmt.Errorf("data: unknown type (%d) "+
+			"for column (`%s`)", column.Type, column.Name)
 	}
 
 	if column.Flags&PrimaryKey != 0 {
@@ -65,7 +93,7 @@ func (column *Column) sqlDesc() string {
 			encodeName(column.ForeignKey))
 	}
 
-	return desc
+	return desc, nil
 }
 
 func (index *Index) sqlDesc(table string) string {
@@ -75,29 +103,6 @@ func (index *Index) sqlDesc(table string) string {
 	}
 	return fmt.Sprintf("INDEX ON %s(%s)",
 		encodeName(table), strings.Join(cols, ", "))
-}
-
-func CreateTable(handle Handle, name string,
-	columns []Column, indexes []Index) error {
-	var names []string
-	for i := range columns {
-		names = append(names, columns[i].sqlDesc())
-	}
-
-	sql := fmt.Sprintf("CREATE TABLE %s(%s)",
-		encodeName(name), strings.Join(names, ", "))
-	if _, err := handle.Query(sql); err != nil {
-		return err
-	}
-
-	for i := range indexes {
-		sql = "CREATE " + indexes[i].sqlDesc(name)
-		if _, err := handle.Query(sql); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func DropTable(handle Handle, name string) error {

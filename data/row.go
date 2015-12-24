@@ -51,7 +51,7 @@ func UpdateRows(handle Handle, table string,
 		encodeName(table), strings.Join(assts, ", "))
 
 	if where != nil {
-		expr, err := sqlWhere(where)
+		expr, err := sqlExpr(where)
 		if err != nil {
 			return err
 		}

@@ -20,7 +20,7 @@ func findSchemaPaths(handle data.Handle, schemaId int) ([]path, error) {
 		[]data.ColName{{"", "id"}, {"", "path"}, {"", "mon_id"}},
 		[]data.Join{{"", "mon_path", ""}},
 		data.Eq{data.ColName{"", "schema"}, schemaId},
-		[]data.Order{{"", "path", false}}, -1)
+		nil, []data.Order{{"", "path", false}}, -1)
 	if err != nil {
 		return nil, err
 	}

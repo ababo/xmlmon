@@ -59,6 +59,6 @@ func main() {
 	}
 	defer db.Close()
 
-	//install(db)
+	install(db)
 	commit(db)
 }

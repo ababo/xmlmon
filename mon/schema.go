@@ -98,7 +98,7 @@ func FindSchema(handle data.Handle, name string) (*Schema, error) {
 	rows, err := data.SelectRows(handle,
 		[]data.ColName{{"", "id"}, {"", "desc"}},
 		[]data.Join{{"", "mon_schema", ""}},
-		data.Eq{data.ColName{"", "name"}, name}, nil, -1)
+		data.Eq{data.ColName{"", "name"}, name}, nil, nil, -1)
 	if err != nil {
 		return nil, err
 	}

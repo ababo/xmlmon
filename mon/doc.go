@@ -53,7 +53,7 @@ func FindDoc(handle data.Handle, name string) (*Doc, error) {
 		[]data.Join{
 			{"", "mon_doc", "schema"},
 			{"id", "mon_schema", ""}},
-		data.Eq{data.ColName{"mon_doc", "name"}, name}, nil, -1)
+		data.Eq{data.ColName{"mon_doc", "name"}, name}, nil, nil, -1)
 	if err != nil {
 		return nil, err
 	}

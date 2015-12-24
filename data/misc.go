@@ -4,19 +4,10 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	_ "github.com/lib/pq"
 	"strings"
 	"time"
 )
-
-type ColName struct {
-	Table  string
-	Column string
-}
-
-type Eq struct {
-	Left  interface{}
-	Right interface{}
-}
 
 type NullTime struct {
 	Time  time.Time
@@ -82,27 +73,21 @@ func encodeValue(value interface{}) string {
 	return "NULL"
 }
 
-func sqlWhere(where interface{}) (string, error) {
-	var left, right string
-	var err error
+type Handle interface {
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+}
 
-	switch where.(type) {
-	case int, string:
-		return encodeValue(where), nil
-	case ColName:
-		colName := where.(ColName)
-		return colName.sqlDesc(), nil
-	case Eq:
-		var eq Eq = where.(Eq)
-		if left, err = sqlWhere(eq.Left); err != nil {
-			return "", err
-		}
-		if right, err = sqlWhere(eq.Right); err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("%s = %s", left, right), nil
-	default:
-		return "", fmt.Errorf("data: unknown type (`%T`) "+
-			"in `where` clause of SelectRows", where)
+func Open(connStr string) (*sql.DB, error) {
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return nil, err
 	}
+
+	_, err = db.Query("SELECT")
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	return db, nil
 }
