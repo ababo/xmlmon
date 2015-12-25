@@ -22,6 +22,11 @@ type Gr struct {
 	Right interface{}
 }
 
+type Ge struct {
+	Left  interface{}
+	Right interface{}
+}
+
 type And struct {
 	Left  interface{}
 	Right interface{}
@@ -147,6 +152,9 @@ func sqlExpr(expr interface{}) (string, error) {
 	case Gr:
 		gr := expr.(Gr)
 		return binaryOp("(%s > %s)", gr.Left, gr.Right)
+	case Ge:
+		ge := expr.(Ge)
+		return binaryOp("(%s >= %s)", ge.Left, ge.Right)
 	case And:
 		and := expr.(And)
 		return binaryOp("(%s AND %s)", and.Left, and.Right)

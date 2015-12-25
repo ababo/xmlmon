@@ -21,7 +21,7 @@ func CommitDoc(handle data.Handle,
 		return err
 	}
 
-	var paths []path
+	var paths []*path
 	paths, err = findSchemaPaths(handle, schema.id)
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func CommitDoc(handle data.Handle,
 	var lastSnapshot time.Time
 	if !snapshot {
 		lastSnapshot, err = findSnapshot(
-			handle, &paths[0], doc, now)
+			handle, paths[0], doc, now)
 		if err != nil {
 			return err
 		}
@@ -52,6 +52,11 @@ L:
 
 	pathStr := "/" + elt.Name.Local
 	paths = filterPaths(paths, pathStr)
+	if len(paths) == 0 {
+		msg := "mon: element path (`%s`) not found"
+		return fmt.Errorf(msg, pathStr)
+	}
+
 	context := commitContext{handle, decoder, schema.id,
 		doc.id, snapshot, lastSnapshot, now, make(docState)}
 	err = commitPathTree(&context, "", paths, elt.Attr)
@@ -89,12 +94,7 @@ func findAttr(attrs []xml.Attr, name string) *xml.Attr {
 }
 
 func getMonIdValue(context *commitContext,
-	parent string, paths []path, attrs []xml.Attr) (string, error) {
-	if len(paths) == 0 {
-		return "", fmt.Errorf(
-			"mon: element path (`%s`) not found", paths[0].path)
-	}
-
+	parent string, paths []*path, attrs []xml.Attr) (string, error) {
 	var monIdValue string
 	if paths[0].monId.Valid {
 		attr := findAttr(attrs, paths[0].monId.String)
@@ -103,15 +103,15 @@ func getMonIdValue(context *commitContext,
 				"(`%s`) not found for element path (`%s`)",
 				paths[0].monId, paths[0].path)
 		}
-		_, ok := context.state[paths[0].path][parent][attr.Value]
-		if ok {
+		elt, ok := context.state[paths[0]][parent][attr.Value]
+		if ok && elt.preserve {
 			return "", fmt.Errorf("mon: non-unique `monId` "+
 				"value (`%s`) for path (`%s`) and "+
 				"parent (`%s`)", attr.Value, paths[0].path,
 				parent)
 		}
 		monIdValue = attr.Value
-	} else if _, ok := context.state[paths[0].path]; ok {
+	} else if _, ok := context.state[paths[0]]; ok {
 		return "", fmt.Errorf("mon: multiple elements for "+
 			"path (`%s`) without `monId`", paths[0].path)
 	}
@@ -120,7 +120,7 @@ func getMonIdValue(context *commitContext,
 }
 
 func commitPathTree(context *commitContext,
-	parent string, paths []path, attrs []xml.Attr) error {
+	parent string, paths []*path, attrs []xml.Attr) error {
 	monIdValue, err := getMonIdValue(context, parent, paths, attrs)
 	if err != nil {
 		return err
@@ -138,6 +138,10 @@ func commitPathTree(context *commitContext,
 			elt := token.(xml.StartElement)
 			path := paths[0].path + "/" + elt.Name.Local
 			paths2 := filterPaths(paths, path)
+			if len(paths2) == 0 {
+				msg := "mon: element path (`%s`) not found"
+				return fmt.Errorf(msg, path)
+			}
 
 			err = commitPathTree(context,
 				monIdValue, paths2, elt.Attr)
@@ -156,7 +160,7 @@ func commitPathTree(context *commitContext,
 			}
 		case xml.EndElement:
 			return commitPath(context,
-				parent, monIdValue, &paths[0], attrs, value)
+				parent, monIdValue, paths[0], attrs, value)
 		}
 	}
 
@@ -167,11 +171,11 @@ func commitPath(context *commitContext,
 	parent, monIdValue string, path *path,
 	attrs []xml.Attr, value string) error {
 	var err error
-	if _, ok := context.state[path.path]; !ok {
+	if _, ok := context.state[path]; !ok {
 		if context.snapshot {
-			context.state[path.path] = make(pathState)
+			context.state[path] = make(pathState)
 		} else {
-			context.state[path.path], err = computePathState(
+			context.state[path], err = computePathState(
 				context.handle, path, context.doc,
 				context.lastSnapshot, context.now)
 			if err != nil {
@@ -180,7 +184,7 @@ func commitPath(context *commitContext,
 		}
 	}
 
-	pathState := context.state[path.path]
+	pathState := context.state[path]
 	if _, ok := pathState[parent]; !ok {
 		pathState[parent] = make(parentState)
 	}
@@ -201,17 +205,10 @@ func commitPath(context *commitContext,
 		return addEvent(context, path, change,
 			parent, monIdValue, attrs, value)
 	}
-	element.preserve = true
+	context.state[path][parent][monIdValue].preserve = true
 
 	return nil
 }
-
-const ( // events
-	snapshot = iota
-	addition = iota
-	removal  = iota
-	change   = iota
-)
 
 func addEvent(context *commitContext, path *path, event int, parent,
 	monIdValue string, attrs []xml.Attr, value string) error {
@@ -229,6 +226,11 @@ func addEvent(context *commitContext, path *path, event int, parent,
 		columns["value"] = value
 	}
 
+	// handy for removal
+	if len(monIdValue) != 0 {
+		columns["attr_"+path.monId.String] = monIdValue
+	}
+
 	for _, a := range attrs {
 		columns["attr_"+a.Name.Local] = a.Value
 	}
@@ -239,19 +241,42 @@ func addEvent(context *commitContext, path *path, event int, parent,
 		return err
 	}
 
-	if !context.snapshot {
+	switch event {
+	case snapshot:
+		break
+	case addition:
 		attrs2 := map[string]string{}
 		for _, a := range attrs {
 			attrs2[a.Name.Local] = a.Value
 		}
-
-		context.state[path.path][parent][monIdValue] =
+		context.state[path][parent][monIdValue] =
 			&element{attrs2, value, true}
+	case change, removal:
+		context.state[path][parent][monIdValue].preserve = true
 	}
 
-	return err
+	return nil
 }
 
 func commitRemovals(context *commitContext) error {
+	remove := func(path *path, parent, monIdValue string) error {
+		return addEvent(context, path,
+			removal, parent, monIdValue, nil, "")
+	}
+
+	for path, pathState := range context.state {
+		for parent, parentState := range pathState {
+			for monIdValue, element := range parentState {
+				if !element.preserve {
+					err := remove(
+						path, parent, monIdValue)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+
 	return nil
 }

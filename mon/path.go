@@ -16,7 +16,7 @@ type path struct {
 	monId  sql.NullString
 }
 
-func findSchemaPaths(handle data.Handle, schemaId int) ([]path, error) {
+func findSchemaPaths(handle data.Handle, schemaId int) ([]*path, error) {
 	rows, err := data.SelectRows(handle,
 		[]data.ColName{{"", "id"}, {"", "path"}, {"", "mon_id"}},
 		[]data.Join{{"", "mon_path", ""}},
@@ -26,7 +26,7 @@ func findSchemaPaths(handle data.Handle, schemaId int) ([]path, error) {
 		return nil, err
 	}
 
-	var paths []path
+	var paths []*path
 	for rows.Next() {
 		var path path
 		if err = rows.Scan(
@@ -34,14 +34,14 @@ func findSchemaPaths(handle data.Handle, schemaId int) ([]path, error) {
 			return nil, err
 		}
 		path.schema = schemaId
-		paths = append(paths, path)
+		paths = append(paths, &path)
 	}
 
 	return paths, nil
 }
 
-func filterPaths(paths []path, prefix string) []path {
-	var filtered []path
+func filterPaths(paths []*path, prefix string) []*path {
+	var filtered []*path
 	for _, p := range paths {
 		if p.path == prefix || strings.HasPrefix(p.path, prefix+"/") {
 			filtered = append(filtered, p)
@@ -57,6 +57,16 @@ type element struct {
 }
 
 func (element *element) isChanged(attrs []xml.Attr, value string) bool {
+	if element.value != value || len(element.attrs) != len(attrs) {
+		return true
+	}
+
+	for _, a := range attrs {
+		if element.attrs[a.Name.Local] != a.Value {
+			return true
+		}
+	}
+
 	return false
 }
 
@@ -67,7 +77,7 @@ type parentState map[string]*element
 type pathState map[string]parentState
 
 // doc path => pathState
-type docState map[string]pathState
+type docState map[*path]pathState
 
 func findSnapshot(handle data.Handle,
 	path *path, doc *Doc, from time.Time) (time.Time, error) {
@@ -98,7 +108,118 @@ func findSnapshot(handle data.Handle,
 	return stime.Time, nil
 }
 
+const ( // event types
+	snapshot = iota
+	addition = iota
+	change   = iota
+	removal  = iota
+)
+
+type event struct {
+	doc    int
+	time   time.Time
+	event  int
+	parent string
+	value  string
+	attrs  map[string]string
+}
+
+func findPathEvents(handle data.Handle,
+	path, doc int, from, to time.Time) ([]event, error) {
+	docWhere := data.Eq{doc, data.ColName{"", "doc"}}
+	fromWhere := data.Ge{data.ColName{"", "time"}, from}
+	toWhere := data.Gr{to, data.ColName{"", "time"}}
+	eventsWhere := data.And{docWhere, data.And{fromWhere, toWhere}}
+
+	rows, err := data.SelectRows(handle, []data.ColName{{"", ""}},
+		[]data.Join{{"", "mon_path_" + fmt.Sprint(path), ""}},
+		eventsWhere, nil, []data.Order{{"", "time", false}}, -1)
+	if err != nil {
+		return nil, err
+	}
+
+	var cols []string
+	if cols, err = rows.Columns(); err != nil {
+		return nil, err
+	}
+	for i := range cols {
+		if strings.HasPrefix(cols[i], "attr_") {
+			cols[i] = cols[i][5:]
+		}
+	}
+
+	fixedCount := 3
+	params := make([]interface{}, len(cols))
+	values := make([]sql.NullString, len(cols)-fixedCount)
+	for i := 0; i < len(cols)-fixedCount; i += 1 {
+		params[fixedCount+i] = &values[i]
+	}
+
+	var events []event
+	for rows.Next() {
+		var event event
+		event.attrs = make(map[string]string)
+
+		params[0], params[1], params[2] =
+			&event.doc, &event.time, &event.event
+		if err = rows.Scan(params...); err != nil {
+			return nil, err
+		}
+
+		i := 0
+		if fixedCount+i < len(cols) &&
+			cols[fixedCount+i] == "parent" {
+			if values[i].Valid {
+				event.parent = values[i].String
+			}
+			i += 1
+		}
+		if fixedCount+i < len(cols) &&
+			cols[fixedCount+i] == "value" {
+			if values[i].Valid {
+				event.value = values[i].String
+			}
+			i += 1
+		}
+
+		for ; i < len(values); i += 1 {
+			if values[i].Valid {
+				event.attrs[cols[fixedCount+i]] =
+					values[i].String
+			}
+		}
+
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
 func computePathState(handle data.Handle,
 	path *path, doc int, from, to time.Time) (pathState, error) {
-	return make(pathState), nil
+	events, err := findPathEvents(handle, path.id, doc, from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	state := make(pathState)
+	for _, e := range events {
+		monIdVal := ""
+		if path.monId.Valid {
+			monIdVal = e.attrs[path.monId.String]
+		}
+
+		switch e.event {
+		case snapshot, addition, change:
+			if _, ok := state[e.parent]; !ok {
+				state[e.parent] = make(parentState)
+			}
+			state[e.parent][monIdVal] =
+				&element{e.attrs, e.value, false}
+		case removal:
+			delete(state[e.parent], monIdVal)
+		}
+	}
+
+	return state, nil
 }
