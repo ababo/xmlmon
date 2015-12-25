@@ -10,7 +10,7 @@ import (
 )
 
 func CommitDoc(handle data.Handle,
-	name string, xmlText io.Reader, snapshot bool) error {
+	name string, reader io.Reader, snapshot bool) error {
 	doc, err := FindDoc(handle, name)
 	if err != nil {
 		return err
@@ -39,7 +39,7 @@ func CommitDoc(handle data.Handle,
 
 	var token interface{}
 	var elt xml.StartElement
-	decoder := xml.NewDecoder(xmlText)
+	decoder := xml.NewDecoder(reader)
 	token, err = decoder.Token()
 L:
 	for ; err == nil; token, err = decoder.Token() {
@@ -101,7 +101,7 @@ func getMonIdValue(context *commitContext,
 		if attr == nil || len(attr.Value) == 0 {
 			return "", fmt.Errorf("mon: `monId` attribute "+
 				"(`%s`) not found for element path (`%s`)",
-				paths[0].monId, paths[0].path)
+				paths[0].monId.String, paths[0].path)
 		}
 		elt, ok := context.state[paths[0]][parent][attr.Value]
 		if ok && elt.preserve {
@@ -156,7 +156,11 @@ func commitPathTree(context *commitContext,
 					"expected for element path (`%s`)",
 					paths[0].path)
 			} else if len(trimmed) != 0 {
-				value += " " + trimmed
+				if len(value) != 0 {
+					value += " " + trimmed
+				} else {
+					value = trimmed
+				}
 			}
 		case xml.EndElement:
 			return commitPath(context,

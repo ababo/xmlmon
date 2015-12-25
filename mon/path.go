@@ -50,6 +50,30 @@ func filterPaths(paths []*path, prefix string) []*path {
 	return filtered
 }
 
+func groupPaths(paths []*path) (string, [][]*path) {
+	first := func(path string) string {
+		return strings.SplitN(path[1:], "/", 2)[0]
+	}
+	last := func(path string) string {
+		return path[strings.LastIndex(path, "/")+1:]
+	}
+
+	var base string
+	var groups [][]*path
+	for i := 1; i < len(paths); i += 1 {
+		comp := first(paths[i].path[len(paths[0].path):])
+		if comp != base {
+			base = comp
+			groups = append(groups, []*path{paths[i]})
+		} else {
+			l := &groups[len(groups)-1]
+			*l = append(*l, paths[i])
+		}
+	}
+
+	return last(paths[0].path), groups
+}
+
 type element struct {
 	attrs    map[string]string
 	value    string
@@ -82,7 +106,7 @@ type docState map[*path]pathState
 func findSnapshot(handle data.Handle,
 	path *path, doc *Doc, from time.Time) (time.Time, error) {
 	docWhere := data.Eq{doc.id, data.ColName{"", "doc"}}
-	timeWhere := data.Gr{from, data.ColName{"", "time"}}
+	timeWhere := data.Ge{from, data.ColName{"", "time"}}
 	eventWhere := data.Eq{snapshot, data.ColName{"", "event"}}
 	snapshotWhere := data.And{docWhere, data.And{timeWhere, eventWhere}}
 
@@ -101,8 +125,9 @@ func findSnapshot(handle data.Handle,
 		return from, err
 	}
 	if !stime.Valid {
-		msg := "data: no snapshot found for document (`%s`)"
-		return from, fmt.Errorf(msg, doc.Name)
+		return from, fmt.Errorf("mon: no snapshot found "+
+			"for document (`%s`) before `%s`",
+			doc.Name, from.String())
 	}
 
 	return stime.Time, nil
@@ -128,7 +153,7 @@ func findPathEvents(handle data.Handle,
 	path, doc int, from, to time.Time) ([]event, error) {
 	docWhere := data.Eq{doc, data.ColName{"", "doc"}}
 	fromWhere := data.Ge{data.ColName{"", "time"}, from}
-	toWhere := data.Gr{to, data.ColName{"", "time"}}
+	toWhere := data.Ge{to, data.ColName{"", "time"}}
 	eventsWhere := data.And{docWhere, data.And{fromWhere, toWhere}}
 
 	rows, err := data.SelectRows(handle, []data.ColName{{"", ""}},

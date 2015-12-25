@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"time"
 )
 
 func install(db *sql.DB) {
@@ -46,6 +47,20 @@ func commit(db *sql.DB) {
 	}
 }
 
+func checkout(db *sql.DB) {
+	timestamp, err := time.Parse(
+		time.RFC3339, "2015-12-25T18:26:58+01:00")
+	if err != nil {
+		log.Fatalf("failed to parse timestamp: %s", err)
+	}
+
+	if err := mon.CheckoutDoc(
+		db, "hw4_172_etr", timestamp,
+		os.Stdout, " ", " "); err != nil {
+		log.Fatalf("failed to checkout doc: %s", err)
+	}
+}
+
 func main() {
 	config, err := NewConfig("config.json")
 	if err != nil {
@@ -60,5 +75,6 @@ func main() {
 	defer db.Close()
 
 	//install(db)
-	commit(db)
+	//commit(db)
+	checkout(db)
 }
