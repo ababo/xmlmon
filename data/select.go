@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 )
 
 type ColName struct {
@@ -17,6 +18,11 @@ type Eq struct {
 }
 
 type Gr struct {
+	Left  interface{}
+	Right interface{}
+}
+
+type And struct {
 	Left  interface{}
 	Right interface{}
 }
@@ -96,6 +102,15 @@ func sqlExprList(list interface{}) (string, error) {
 			str, _ := sqlExpr(e)
 			strs = append(strs, str)
 		}
+	case []Aggr:
+		lst := list.([]Aggr)
+		for _, e := range lst {
+			str, err := sqlExpr(e)
+			if err != nil {
+				return "", err
+			}
+			strs = append(strs, str)
+		}
 	default:
 		return "", fmt.Errorf("data: unsupported "+
 			"type (`%T`) of expression list", list)
@@ -118,20 +133,23 @@ func sqlExpr(expr interface{}) (string, error) {
 	}
 
 	switch expr.(type) {
-	case int, string:
+	case int, string, time.Time:
 		return encodeValue(expr), nil
 	case ColName:
 		colName := expr.(ColName)
 		return colName.sqlDesc(), nil
 	case Aggr:
-		colName := expr.(Aggr)
-		return colName.sqlDesc()
+		aggr := expr.(Aggr)
+		return aggr.sqlDesc()
 	case Eq:
 		eq := expr.(Eq)
-		return binaryOp("%s = %s", eq.Left, eq.Right)
+		return binaryOp("(%s = %s)", eq.Left, eq.Right)
 	case Gr:
 		gr := expr.(Gr)
-		return binaryOp("%s > %s", gr.Left, gr.Right)
+		return binaryOp("(%s > %s)", gr.Left, gr.Right)
+	case And:
+		and := expr.(And)
+		return binaryOp("(%s AND %s)", and.Left, and.Right)
 	default:
 		return "", fmt.Errorf(
 			"data: unknown type (`%T`) in expression", expr)

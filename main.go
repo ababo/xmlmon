@@ -41,7 +41,7 @@ func commit(db *sql.DB) {
 	}
 	defer file.Close()
 
-	if err = mon.CommitDoc(db, "hw4_172_etr", file, false); err != nil {
+	if err = mon.CommitDoc(db, "hw4_172_etr", file, true); err != nil {
 		log.Fatalf("failed to commit doc: %s", err)
 	}
 }
@@ -59,6 +59,6 @@ func main() {
 	}
 	defer db.Close()
 
-	install(db)
+	//install(db)
 	commit(db)
 }

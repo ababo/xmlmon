@@ -27,6 +27,16 @@ func CommitDoc(handle data.Handle,
 		return err
 	}
 
+	now := time.Now()
+	var lastSnapshot time.Time
+	if !snapshot {
+		lastSnapshot, err = findSnapshot(
+			handle, &paths[0], doc, now)
+		if err != nil {
+			return err
+		}
+	}
+
 	var token interface{}
 	var elt xml.StartElement
 	decoder := xml.NewDecoder(xmlText)
@@ -43,27 +53,30 @@ L:
 	pathStr := "/" + elt.Name.Local
 	paths = filterPaths(paths, pathStr)
 	context := commitContext{handle, decoder, schema.id,
-		doc.id, snapshot, time.Now(), make(docState)}
+		doc.id, snapshot, lastSnapshot, now, make(docState)}
 	err = commitPathTree(&context, "", paths, elt.Attr)
 	if err != nil {
 		return err
 	}
 
-	if err = commitRemovals(&context); err != nil {
-		return err
+	if !snapshot {
+		if err = commitRemovals(&context); err != nil {
+			return err
+		}
 	}
 
 	return doc.Update(handle, context.now)
 }
 
 type commitContext struct {
-	handle   data.Handle
-	decoder  *xml.Decoder
-	schema   int
-	doc      int
-	snapshot bool
-	now      time.Time
-	state    docState
+	handle       data.Handle
+	decoder      *xml.Decoder
+	schema       int
+	doc          int
+	snapshot     bool
+	lastSnapshot time.Time
+	now          time.Time
+	state        docState
 }
 
 func findAttr(attrs []xml.Attr, name string) *xml.Attr {
@@ -101,15 +114,6 @@ func getMonIdValue(context *commitContext,
 	} else if _, ok := context.state[paths[0].path]; ok {
 		return "", fmt.Errorf("mon: multiple elements for "+
 			"path (`%s`) without `monId`", paths[0].path)
-	}
-
-	if _, ok := context.state[paths[0].path]; !ok {
-		var err error
-		context.state[paths[0].path], err = computePathState(
-			context.handle, &paths[0], context.doc, time.Now())
-		if err != nil {
-			return "", err
-		}
 	}
 
 	return monIdValue, nil
@@ -164,15 +168,16 @@ func commitPath(context *commitContext,
 	attrs []xml.Attr, value string) error {
 	var err error
 	if _, ok := context.state[path.path]; !ok {
-		if !context.snapshot {
-			context.state[path.path], err =
-				computePathState(context.handle,
-					path, context.doc, context.now)
+		if context.snapshot {
+			context.state[path.path] = make(pathState)
+		} else {
+			context.state[path.path], err = computePathState(
+				context.handle, path, context.doc,
+				context.lastSnapshot, context.now)
 			if err != nil {
 				return err
 			}
 		}
-		context.state[path.path] = make(pathState)
 	}
 
 	pathState := context.state[path.path]
@@ -230,14 +235,19 @@ func addEvent(context *commitContext, path *path, event int, parent,
 
 	_, err := data.InsertRow(context.handle,
 		"mon_path_"+fmt.Sprint(path.id), columns, "")
-
-	attrs2 := map[string]string{}
-	for _, a := range attrs {
-		attrs2[a.Name.Local] = a.Value
+	if err != nil {
+		return err
 	}
 
-	context.state[path.path][parent][monIdValue] =
-		&element{attrs2, value, true}
+	if !context.snapshot {
+		attrs2 := map[string]string{}
+		for _, a := range attrs {
+			attrs2[a.Name.Local] = a.Value
+		}
+
+		context.state[path.path][parent][monIdValue] =
+			&element{attrs2, value, true}
+	}
 
 	return err
 }

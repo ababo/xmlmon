@@ -4,6 +4,7 @@ import (
 	"btc/data"
 	"database/sql"
 	"encoding/xml"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -68,7 +69,36 @@ type pathState map[string]parentState
 // doc path => pathState
 type docState map[string]pathState
 
+func findSnapshot(handle data.Handle,
+	path *path, doc *Doc, from time.Time) (time.Time, error) {
+	docWhere := data.Eq{doc.id, data.ColName{"", "doc"}}
+	timeWhere := data.Gr{from, data.ColName{"", "time"}}
+	eventWhere := data.Eq{snapshot, data.ColName{"", "event"}}
+	snapshotWhere := data.And{docWhere, data.And{timeWhere, eventWhere}}
+
+	rows, err := data.SelectRows(handle,
+		[]data.Aggr{{"", "time", data.Max}},
+		[]data.Join{{"", "mon_path_" + fmt.Sprint(path.id), ""}},
+		snapshotWhere, nil, nil, -1)
+	if err != nil {
+		return from, err
+	}
+	defer rows.Close()
+
+	rows.Next()
+	var stime data.NullTime
+	if err = rows.Scan(&stime); err != nil {
+		return from, err
+	}
+	if !stime.Valid {
+		msg := "data: no snapshot found for document (`%s`)"
+		return from, fmt.Errorf(msg, doc.Name)
+	}
+
+	return stime.Time, nil
+}
+
 func computePathState(handle data.Handle,
-	path *path, doc int, timestamp time.Time) (pathState, error) {
+	path *path, doc int, from, to time.Time) (pathState, error) {
 	return make(pathState), nil
 }
